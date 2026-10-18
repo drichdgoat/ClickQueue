@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Agreement Management - SnapVenture Admin</title>
+    <link rel="stylesheet" href="../../css/agreements.css" />
+  </head>
+  <body>
+    <div class="admin-shell">
+      <div class="admin-mobile">
+        <b style="color: var(--brown)">SnapVenture Admin</b
+        ><button class="btn btn-outline" data-admin-menu>☰</button>
+      </div>
+      <aside class="sidebar">
+        <img class="logo" src="../../images/logo.png" />
+        <p class="admin-label">Admin Panel</p>
+        <nav class="admin-nav">
+          <a href="dashboard.html" class=""><span>▦</span>Dashboard</a
+          ><a href="bookings.html" class=""><span>◫</span>Bookings</a
+          ><a href="calendar.html" class=""><span>▣</span>Calendar</a
+          ><a href="equipment.html" class=""><span>▤</span>Equipment</a
+          ><a href="customers.html" class=""><span>♙</span>Customers</a
+          ><a href="feedback.html" class=""><span>✉</span>Feedback</a
+          ><a href="agreements.html" class="active"><span>▤</span>Agreements</a
+          ><a href="settings.html" class=""><span>⚙</span>Settings</a>
+        </nav>
+        <div class="sidebar-bottom">
+          <a
+            class="btn btn-outline"
+            style="width: 100%; text-align: center"
+            href="../../index.html"
+            >↗ Back to Website</a
+          ><br /><a
+            class="btn btn-danger"
+            style="width: 100%; text-align: center"
+            href="login.html"
+            >↪ Logout</a
+          >
+        </div>
+      </aside>
+      <main class="admin-content">
+        <div class="admin-heading">
+          <h1>Agreement Management</h1>
+          <p>View and manage agreement management.</p>
+        </div>
+        <div class="admin-card" style="margin-top: 25px">
+          <div class="action-row">
+            <button class="btn btn-primary" data-demo>+ Add New</button
+            ><button class="btn btn-outline" data-demo>Search</button>
+          </div>
+          <div class="admin-table-wrap" style="margin-top: 15px">
+            <table>
+              <tr>
+                <th>Agreement</th>
+                <th>Booking</th>
+                <th>Customer</th>
+                <th>Status</th>
+              </tr>
+              <tr>
+                <td>AGR-001</td>
+                <td>BK-1001</td>
+                <td>Joshua Tagle</td>
+                <td><span class="status completed">Signed</span></td>
+              </tr>
+              <tr>
+                <td>AGR-002</td>
+                <td>BK-1002</td>
+                <td>Aaron Mendoza</td>
+                <td><span class="status pending">Pending</span></td>
+              </tr>
+              <tr>
+                <td>AGR-003</td>
+                <td>BK-1003</td>
+                <td>Charly Torcuator</td>
+                <td><span class="status completed">Signed</span></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

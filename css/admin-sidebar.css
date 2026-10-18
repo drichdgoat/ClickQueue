@@ -1,0 +1,123 @@
+body aside.sidebar {
+  width: 240px;
+  background: #fff;
+  border-right: 1px solid #e8dfd8;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  padding: 24px 16px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    Helvetica,
+    sans-serif !important;
+}
+body aside.sidebar .logo {
+  width: 100px;
+  margin: 0 50px 5px;
+}
+body aside.sidebar .admin-label {
+  color: #756a63;
+  font-size: 14px !important;
+  margin: 0 8px 22px;
+}
+body aside.sidebar .admin-nav {
+  flex: 1;
+  border-top: 1px solid #e8dfd8;
+  padding-top: 20px;
+}
+body aside.sidebar .admin-nav a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  margin: 6px 0;
+  border-radius: 10px;
+  color: #6b5244;
+  font-weight: 500 !important;
+  font-size: 16px !important;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    Helvetica,
+    sans-serif !important;
+  background: none;
+  border: 0;
+  text-decoration: none;
+}
+body aside.sidebar .admin-nav a:hover {
+  background: #faf8f5;
+}
+body aside.sidebar .admin-nav a.active {
+  background: #6b5244;
+  color: #fff;
+}
+body aside.sidebar .sidebar-bottom {
+  border-top: 1px solid #e8dfd8;
+  padding-top: 12px;
+}
+body aside.sidebar .sidebar-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  margin: 0;
+  border-radius: 8px;
+  font-size: 14px !important;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    Helvetica,
+    sans-serif !important;
+  color: #6b5244;
+  background: none;
+  border: 0;
+  text-decoration: none;
+}
+body aside.sidebar .sidebar-link:hover {
+  background: #faf8f5;
+}
+body aside.sidebar .sidebar-link.logout {
+  color: #b91c1c;
+}
+body aside.sidebar .icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+body aside.sidebar .sidebar-link .icon {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 900px) {
+  body aside.sidebar {
+    transform: translateX(-100%);
+    transition: 0.25s;
+  }
+  body aside.sidebar.open {
+    transform: translateX(0);
+  }
+}

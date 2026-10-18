@@ -1,0 +1,8 @@
+{
+  "name": "snapventure/app",
+  "description": "SnapVenture camera rental and photobooth booking system",
+  "require": {
+    "php": ">=8.0",
+    "dompdf/dompdf": "^3.0"
+  }
+}

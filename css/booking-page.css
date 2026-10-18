@@ -1,0 +1,464 @@
+/* SnapVenture - booking page (step-by-step form + live reservation summary) */
+/* Banner photo: add  style="--banner-img:url('../images/YOUR-BANNER.png')"  on <section class="bk-banner"> */
+[hidden] {
+  display: none !important;
+}
+.bk-page {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+  background: #f8f6f4;
+  color: #1a1a1a;
+  padding-bottom: 72px;
+}
+.bk-page * {
+  box-sizing: border-box;
+}
+.ic {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+.bk-banner {
+  position: relative;
+  text-align: center;
+  padding: 52px 16px 46px;
+  background: #eee7e0 var(--banner-img, none) center/cover;
+}
+.bk-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(244, 239, 234, 0.9);
+}
+.bk-banner > * {
+  position: relative;
+}
+.bk-banner h1 {
+  margin: 0 0 12px;
+  font-size: 32px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #1a1a1a;
+}
+.bk-banner p {
+  margin: 0;
+  font-size: 17px;
+  color: #6b5244;
+}
+
+.bk-container {
+  width: min(1066px, calc(100% - 48px));
+  margin: 56px auto 0;
+}
+.bk-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+.bk-left {
+  display: grid;
+  gap: 28px;
+}
+.bk-card {
+  background: #fff;
+  border: 1px solid #e9e2dc;
+  border-radius: 14px;
+  padding: 28px;
+}
+.bk-card h2 {
+  margin: 0 0 22px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #1a1a1a;
+}
+
+/* locked steps */
+.bk-card.is-locked {
+  background: rgba(255, 255, 255, 0.55);
+}
+.bk-card.is-locked h2 {
+  color: #8f8781;
+}
+.bk-card.is-locked .bk-body {
+  display: none;
+}
+.bk-card:not(.is-locked) .bk-lock {
+  display: none;
+}
+.bk-lock {
+  margin: 0;
+  padding: 15px 20px;
+  border-radius: 10px;
+  background: #f3efec;
+  color: #9a918b;
+  font-size: 15px;
+}
+
+/* fields */
+.bk-field {
+  margin-bottom: 18px;
+}
+.bk-field:last-child {
+  margin-bottom: 0;
+}
+.bk-field label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+.bk-input {
+  position: relative;
+  background: #fff;
+  border-radius: 10px;
+}
+.bk-input .ic {
+  position: absolute;
+  left: 12px;
+  top: 13px;
+  z-index: 1;
+  color: #6b5244;
+  pointer-events: none;
+}
+.bk-input input,
+.bk-select,
+.bk-field textarea {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 40px;
+  font: inherit;
+  font-size: 16px;
+  color: #1a1a1a;
+  background: transparent;
+  border: 1px solid #e3dad3;
+  border-radius: 10px;
+  outline: 0;
+}
+.bk-input input {
+  position: relative;
+}
+.bk-select {
+  padding: 0 40px 0 18px;
+  background: #fff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b5244' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 16px center/16px;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.bk-field textarea {
+  height: auto;
+  min-height: 120px;
+  padding: 16px;
+  resize: vertical;
+  background: #fff;
+}
+.bk-input input[type="time"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.bk-page ::placeholder {
+  color: #8f857f;
+}
+.bk-input input:focus,
+.bk-select:focus,
+.bk-field textarea:focus {
+  border-color: #6b5244;
+  box-shadow: 0 0 0 3px rgba(107, 82, 68, 0.12);
+}
+.bk-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.bk-row2 .bk-field {
+  margin: 0;
+}
+.bk-error {
+  margin: 0 0 16px;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+/* big date picker */
+.bk-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+.bk-cal-head strong {
+  font-size: 20px;
+  font-weight: 600;
+}
+.bk-nav {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+.bk-nav:hover {
+  background: #f3eeea;
+}
+.bk-nav .ic {
+  width: 22px;
+  height: 22px;
+}
+.bk-cal-week,
+.bk-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 7px;
+}
+.bk-cal-week span {
+  padding-bottom: 16px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #6b5244;
+}
+.bk-day {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 500;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+.bk-day:hover:not(:disabled) {
+  background: #f3eeea;
+}
+.bk-day.is-past {
+  color: #cbc3bd;
+  cursor: default;
+}
+.bk-day.is-booked {
+  background: #f8e1e1;
+  color: #dc2626;
+  cursor: not-allowed;
+}
+.bk-day.is-selected {
+  background: #6b5244;
+  color: #fff;
+  font-weight: 600;
+}
+.bk-legend {
+  display: flex;
+  gap: 22px;
+  margin-top: 28px;
+  font-size: 15px;
+}
+.bk-legend span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bk-sw {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: #6b5244;
+}
+.bk-sw.booked {
+  background: #f8e1e1;
+}
+
+/* reservation summary */
+.bk-summary {
+  position: sticky;
+  top: 96px;
+}
+.bk-sum-empty {
+  margin: 0 0 26px;
+  color: #6b5244;
+  font-size: 16px;
+}
+.bk-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.bk-row .ic {
+  margin-top: 2px;
+  color: #6b5244;
+}
+.bk-row small {
+  display: block;
+  font-size: 14px;
+  color: #7a6b62;
+}
+.bk-row b {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.bk-line {
+  border: 0;
+  border-top: 1px solid #e9e2dc;
+  margin: 0 0 18px;
+}
+.bk-price {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: #7a6b62;
+  font-size: 16px;
+}
+.bk-price b {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+.bk-price.fee {
+  font-size: 14px;
+}
+.bk-price.fee b {
+  color: #7a6b62;
+  font-weight: 400;
+}
+.bk-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 22px;
+}
+.bk-total span {
+  font-size: 18px;
+  font-weight: 600;
+}
+.bk-total b {
+  font-size: 24px;
+  font-weight: 700;
+  color: #6b5244;
+}
+.bk-notice {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid #e3d9d1;
+  border-radius: 10px;
+  background: #f4efeb;
+  color: #6b5244;
+}
+.bk-notice .ic {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+.bk-notice b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.bk-notice p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.3;
+}
+.bk-pay {
+  display: block;
+  width: 100%;
+  height: 42px;
+  line-height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #6b5244;
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.bk-pay:hover:not(:disabled) {
+  background: #594237;
+}
+.bk-pay:disabled {
+  background: #f3eeea;
+  color: #6b5244;
+  cursor: not-allowed;
+}
+.bk-pay.alt {
+  background: #f3eeea;
+  color: #6b5244;
+}
+
+/* confirmation */
+.bk-success {
+  max-width: 520px;
+  margin: 0 auto;
+}
+.bk-success > p {
+  margin: -10px 0 22px;
+  color: #7a6b62;
+}
+.bk-actions {
+  display: grid;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .bk-layout {
+    grid-template-columns: 1fr;
+  }
+  .bk-summary {
+    position: static;
+  }
+}
+@media (max-width: 560px) {
+  .bk-container {
+    width: calc(100% - 32px);
+    margin-top: 32px;
+  }
+  .bk-card {
+    padding: 20px;
+  }
+  .bk-row2 {
+    grid-template-columns: 1fr;
+  }
+  .bk-cal-week,
+  .bk-cal-grid {
+    gap: 4px;
+  }
+  .bk-day {
+    font-size: 14px;
+  }
+  .bk-banner h1 {
+    font-size: 26px;
+  }
+}

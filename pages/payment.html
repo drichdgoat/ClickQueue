@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Payment &amp; Agreement - SnapVenture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/payment.css" />
+  </head>
+  <body>
+    <!-- Icon sprite (same idea as booking.html) -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="i-user" viewBox="0 0 24 24">
+        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24">
+        <path
+          d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
+        />
+        <circle cx="12" cy="13" r="3" />
+      </symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24">
+        <rect width="18" height="18" x="3" y="4" rx="2" />
+        <path d="M16 2v4M8 2v4M3 10h18" />
+      </symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24">
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+        <circle cx="12" cy="10" r="3" />
+      </symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 8v4M12 16h.01" />
+      </symbol>
+      <symbol id="i-doc" viewBox="0 0 24 24">
+        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+        <path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8" />
+      </symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <path d="m17 8-5-5-5 5M12 3v12" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="M21.8 10A10 10 0 1 1 17 3.3" />
+        <path d="m9 11 3 3L22 4" />
+      </symbol>
+    </svg>
+
+    <header class="site-header">
+      <div class="container navbar">
+        <a href="../index.html"
+          ><img
+            class="logo"
+            src="../images/snapventure_logo.jpg"
+            alt="SnapVenture"
+        /></a>
+        <nav class="nav-links">
+          <a href="../index.html" class="">Home</a
+          ><a href="../pages/services.html" class="">Services</a
+          ><a href="../pages/booking.html" class="">Book Now</a
+          ><a href="../pages/inquiry.html" class="">Help &amp; Feedback</a>
+        </nav>
+        <button class="menu-btn">☰</button>
+      </div>
+      <nav class="mobile-nav">
+        <a href="../index.html" class="">Home</a
+        ><a href="../pages/services.html" class="">Services</a
+        ><a href="../pages/booking.html" class="">Book Now</a
+        ><a href="../pages/inquiry.html" class="">Help &amp; Feedback</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      <section class="page-banner">
+        <div class="container">
+          <h1>Payment &amp; Agreement</h1>
+          <p>
+            Complete your reservation by submitting payment and reviewing our
+            terms
+          </p>
+        </div>
+      </section>
+
+      <section class="pay-section">
+        <div class="container">
+          <!-- Shown when someone opens this page without going through booking.html -->
+          <div class="pay-card pay-empty" id="payEmpty" hidden>
+            <h2>No reservation to pay for yet</h2>
+            <p>
+              Fill in the booking form first, then choose Proceed to Payment.
+              Your details will show up here.
+            </p>
+            <a class="btn btn-primary" href="booking.html">Book Now</a>
+          </div>
+
+          <div class="pay-layout" id="payLayout">
+            <div class="pay-main">
+              <!-- Reservation Summary (filled from the booking form) -->
+              <section class="pay-card">
+                <h2>Reservation Summary</h2>
+                <div id="resRows"></div>
+              </section>
+
+              <!-- Payment Method -->
+              <section class="pay-card">
+                <div class="pay-info">
+                  <svg class="ic"><use href="#i-doc" /></svg>
+                  <div>
+                    <b>Agreement Generation</b>
+                    <p>
+                      After your down payment (50% of total) is confirmed, a PDF
+                      copy of your rental agreement will be automatically
+                      generated and sent to your email address.
+                    </p>
+                  </div>
+                </div>
+                <h2>Payment Method</h2>
+                <div class="methods" id="methods"></div>
+                <div class="instructions" id="instructions" hidden></div>
+              </section>
+
+              <!-- Upload Proof of Payment -->
+              <section class="pay-card">
+                <h2>Upload Proof of Payment</h2>
+                <div
+                  class="dropzone"
+                  id="dropzone"
+                  role="button"
+                  tabindex="0"
+                  aria-label="Upload proof of payment"
+                ></div>
+                <input
+                  class="sr-only"
+                  type="file"
+                  id="proofInput"
+                  tabindex="-1"
+                  accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
+                />
+                <p class="pay-error" id="proofError" hidden></p>
+              </section>
+
+              <!-- Rental Agreement -->
+              <section class="pay-card">
+                <h2>Rental Agreement</h2>
+                <div
+                  class="terms"
+                  tabindex="0"
+                  aria-label="Terms and conditions"
+                >
+                  <h3>Terms and Conditions</h3>
+                  <p>
+                    <b>1. Rental Period:</b> Equipment must be returned by the
+                    agreed time. Late returns will incur additional charges of
+                    ₱50 per hour.
+                  </p>
+                  <p>
+                    <b>2. Equipment Care:</b> Renter is responsible for the
+                    equipment during the rental period. Any damage or loss will
+                    be charged according to repair or replacement costs.
+                  </p>
+                  <p>
+                    <b>3. Deposit:</b> A security deposit of ₱200 is required
+                    and will be refunded upon return of equipment in good
+                    condition.
+                  </p>
+                  <p>
+                    <b>4. Cancellation:</b> Free cancellation up to 48 hours
+                    before rental date. Late cancellations forfeit 50% of the
+                    rental fee.
+                  </p>
+                  <p>
+                    <b>5. Insurance:</b> Optional insurance is available to
+                    cover accidental damage for an additional 10% of the rental
+                    fee.
+                  </p>
+                </div>
+                <label class="agree">
+                  <input type="checkbox" id="agree" />
+                  <span>
+                    I have read and agree to the rental terms and conditions. I
+                    understand that I am responsible for the equipment during
+                    the rental period.
+                  </span>
+                </label>
+              </section>
+            </div>
+
+            <!-- Payment Summary -->
+            <aside class="pay-side">
+              <div class="pay-card">
+                <h2>Payment Summary</h2>
+                <div class="sum-row">
+                  <span>Rental Fee</span><b id="sumRental"></b>
+                </div>
+                <div class="sum-row">
+                  <span>Service Fee</span><b id="sumFee"></b>
+                </div>
+                <hr class="sum-line" />
+                <div class="sum-row sum-subtotal">
+                  <span>Subtotal</span><b id="sumTotal"></b>
+                </div>
+
+                <div class="down">
+                  <div class="down-top">
+                    <span>Down Payment (50%)</span><b id="sumDown"></b>
+                  </div>
+                  <small>Pay now to confirm booking</small>
+                </div>
+
+                <div class="sum-row sum-remain">
+                  <span>Remaining Balance</span><b id="sumRemain"></b>
+                </div>
+                <p class="sum-due">Due on pickup/event day</p>
+
+                <div class="notes">
+                  <div class="notes-head">
+                    <svg class="ic"><use href="#i-alert" /></svg>
+                    Important Notes:
+                  </div>
+                  <ul>
+                    <li>Pay 50% down payment now to secure your booking</li>
+                    <li>Remaining 50% due on pickup/event day</li>
+                    <li>
+                      Agreement PDF will be emailed after payment confirmation
+                    </li>
+                  </ul>
+                </div>
+
+                <button type="button" class="confirm" id="confirmBtn" disabled>
+                  Confirm Reservation
+                </button>
+                <p class="confirm-hint" id="confirmHint"></p>
+
+                <ul class="perks">
+                  <li>
+                    <svg class="ic"><use href="#i-check" /></svg>Confirmation
+                    email with booking details
+                  </li>
+                  <li>
+                    <svg class="ic"><use href="#i-doc" /></svg>PDF rental
+                    agreement with T&amp;C
+                  </li>
+                </ul>
+              </div>
+            </aside>
+          </div>
+
+          <!-- Shown after Confirm Reservation -->
+          <section class="pay-card pay-success" id="paySuccess" hidden>
+            <svg class="ic ok-icon"><use href="#i-check" /></svg>
+            <h2>Reservation Confirmed</h2>
+            <p>
+              Thank you! We'll verify your down payment and email your rental
+              agreement to <b id="okEmail"></b>.
+            </p>
+            <p class="ok-ref">Reference No. <b id="okRef"></b></p>
+            <div class="ok-rows" id="okRows"></div>
+            <div class="ok-actions">
+              <a class="btn btn-primary" href="booking.html"
+                >Book Another Service</a
+              >
+              <a class="btn btn-outline" href="../index.html">Back to Home</a>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <img
+              class="logo"
+              src="../images/snapventure_logo.jpg"
+              alt="SnapVenture"
+            />
+            <p>
+              Professional camera rental and photobooth services for your
+              special moments.
+            </p>
+          </div>
+          <div>
+            <h3>Quick Links</h3>
+            <div class="footer-links">
+              <a href="../pages/services.html">Services</a
+              ><a href="../pages/booking.html">Book Now</a
+              ><a href="../pages/inquiry.html">Contact Us</a
+              ><a href="../pages/admin/login.html">Admin Panel</a>
+            </div>
+          </div>
+          <div>
+            <h3>Contact</h3>
+            <p>Email: hello@snapventure.com</p>
+            <p>Phone: (555) 123-4567</p>
+            <p>Hours: Mon-Sat, 9AM-6PM</p>
+          </div>
+        </div>
+        <div class="copyright">© 2026 SnapVenture. All rights reserved.</div>
+      </div>
+    </footer>
+
+    <!-- order matters: booking store first, then this page's logic, then script.js -->
+    <script src="../js/booking-calendar.js"></script>
+    <script src="../js/payment.js"></script>
+    <script src="../script.js"></script>
+  </body>
+</html>

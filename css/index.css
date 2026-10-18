@@ -1,0 +1,734 @@
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #3f332d;
+  background: #faf8f5;
+  line-height: 1.5;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+
+:root {
+  --brown: #6b5244;
+  --brown-dark: #594237;
+  --cream: #faf8f5;
+  --light: #f3eee9;
+  --border: #e8dfd8;
+  --white: #ffffff;
+  --muted: #756a63;
+  --green: #166534;
+  --green-bg: #dcfce7;
+  --yellow: #854d0e;
+  --yellow-bg: #fef9c3;
+  --red: #b91c1c;
+}
+
+.container {
+  width: min(1180px, calc(100% - 32px));
+  margin: auto;
+}
+.page {
+  min-height: 70vh;
+}
+.section {
+  padding: 48px 0;
+}
+.section.light {
+  background: var(--white);
+}
+.section.muted {
+  background-color: #e1d3cb;
+}
+.section.cta {
+  background-color: #e1d3cb;
+  padding: 40px 0;
+}
+.site-header {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.navbar {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  width: 100px;
+  height: auto;
+  display: block;
+  height: auto;
+}
+.nav-links {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+}
+.nav-links a {
+  color: var(--muted);
+  font-weight: 500;
+}
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--brown);
+}
+.menu-btn {
+  display: none;
+  background: none;
+  border: 0;
+  font-size: 28px;
+  color: var(--brown);
+}
+
+.mobile-nav {
+  display: none;
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+}
+.mobile-nav a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+.mobile-nav a.active {
+  background: var(--brown);
+  color: white;
+}
+
+.btn {
+  display: inline-block;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 12px 22px;
+  transition: 0.2s;
+  font-weight: 500;
+}
+.btn-primary {
+  background: var(--brown);
+  color: white;
+}
+.btn-primary:hover {
+  background: var(--brown-dark);
+}
+.btn-outline {
+  background: white;
+  border-color: var(--border);
+  color: var(--brown);
+}
+.btn-outline:hover {
+  background: var(--light);
+}
+.btn-danger {
+  background: #fee2e2;
+  color: var(--red);
+  border: 0;
+}
+
+.hero {
+  padding: 56px 0;
+  background: linear-gradient(135deg, #eee6df, #f7f3ef);
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+}
+.hero h1 {
+  font-size: clamp(32px, 4.6vw, 50px);
+  line-height: 1.1;
+  margin: 0 0 20px;
+  font-weight: 600;
+  color: #3f332d;
+}
+.hero p {
+  font-size: 17px;
+  color: var(--muted);
+  max-width: 620px;
+  margin-bottom: 24px;
+}
+.hero-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.hero-images img {
+  width: 100%;
+  height: 290px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 8px 25px #00000018;
+}
+.hero-images img:nth-child(2) {
+  margin-top: 28px;
+}
+
+.section-title {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.section-title h2 {
+  font-size: 30px;
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+.section-title p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 2px 8px #00000006;
+}
+.card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.card h3 {
+  margin: 0 0 10px;
+  font-size: 22px;
+}
+.card p {
+  color: var(--muted);
+}
+.check-list {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 20px;
+}
+.check-list li {
+  margin: 8px 0;
+}
+.check-list li::before {
+  content: "✓";
+  color: var(--brown);
+  font-weight: bold;
+  margin-right: 9px;
+}
+
+.testimonial {
+  background: var(--light);
+}
+.stars {
+  color: var(--brown);
+  letter-spacing: 2px;
+}
+.cta {
+  background: var(--brown);
+  color: #3f332d;
+  text-align: center;
+}
+.cta h2 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.cta p {
+  margin: 0 0 20px;
+  opacity: 0.9;
+}
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+.cta .btn-outline {
+  color: var(--brown);
+}
+
+.footer {
+  background: white;
+  border-top: 1px solid var(--border);
+  padding: 36px 0 16px;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1.2fr;
+  gap: 32px;
+  align-items: start;
+}
+.footer .logo {
+  width: 84px;
+  margin-bottom: 10px;
+}
+.footer-brand p {
+  max-width: 320px;
+  margin: 0;
+}
+.footer h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--brown);
+}
+.footer p,
+.footer a {
+  color: var(--muted);
+  font-size: 14px;
+}
+.footer-links a {
+  display: block;
+  margin: 6px 0;
+}
+.copyright {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 14px;
+  text-align: center;
+  color: var(--brown);
+  opacity: 0.75;
+  font-size: 12.5px;
+}
+@media (max-width: 900px) {
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 600px) {
+  .footer-grid {
+    gap: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .nav-links {
+    display: none;
+  }
+  .menu-btn {
+    display: block;
+  }
+  .mobile-nav.show {
+    display: block;
+  }
+  .hero-grid,
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .grid-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .grid-4 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .section {
+    padding: 36px 0;
+  }
+  .container {
+    width: min(100% - 24px, 1180px);
+  }
+  .hero {
+    padding: 40px 0;
+  }
+  .hero-images img {
+    height: 200px;
+  }
+  .grid-3,
+  .grid-4,
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+  .package.popular {
+    transform: none;
+  }
+  .page-banner h1 {
+    font-size: 30px;
+  }
+  .card {
+    padding: 20px;
+  }
+}
+
+/* =====================================================================
+   SnapVenture - shared navigation + hover/focus design system
+   Load LAST on every customer page (after the page's own CSS):
+     <link rel="stylesheet" href="css/site-ui.css">      (root pages)
+     <link rel="stylesheet" href="../css/site-ui.css">   (pages/*.php)
+   ===================================================================== */
+
+:root {
+  --ui-ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --ui-fast: 0.2s;
+  --ui-focus: 0 0 0 3px rgba(107, 82, 68, 0.35);
+  --ui-lift: 0 6px 16px rgba(89, 66, 55, 0.18);
+  --ui-card-shadow: 0 10px 26px rgba(89, 66, 55, 0.12);
+}
+
+/* ---------- 1. Stop nav shifting between pages ----------
+   Pages that scroll have a scrollbar, short pages don't. That changes the
+   viewport width by ~15px and makes the centered/spaced nav "jump" when you
+   move between pages (e.g. Home -> Help). Reserve the gutter everywhere. */
+html {
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+}
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+body {
+  overflow-x: clip;
+}
+
+/* ---------- 2. Navigation bar: identical on every page ----------
+   Typography is pinned explicitly so a page stylesheet (Inter font on the
+   booking/help pages, letter-spacing, etc.) can never leak into the header. */
+.site-header,
+.site-header * {
+  box-sizing: border-box;
+}
+.site-header .navbar {
+  min-height: 68px; /* min only: header must grow with the logo */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.site-header .logo {
+  width: 100px;
+  height: auto;
+  display: block;
+}
+.site-header .nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.site-header .nav-links a,
+.site-header .mobile-nav a {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 500; /* never changes on hover/active -> no width shift */
+  letter-spacing: 0;
+  line-height: 1.5;
+  text-transform: none;
+  white-space: nowrap;
+}
+.site-header .nav-links a {
+  position: relative;
+  padding: 8px 2px;
+  color: var(--muted);
+  transition: color var(--ui-fast) var(--ui-ease);
+}
+.site-header .nav-links a:visited {
+  color: var(--muted);
+}
+/* underline indicator: absolutely positioned, so it never affects layout */
+.site-header .nav-links a::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--brown);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--ui-fast) var(--ui-ease);
+}
+.site-header .nav-links a:hover,
+.site-header .nav-links a:focus-visible,
+.site-header .nav-links a.active,
+.site-header .nav-links a[aria-current="page"] {
+  color: var(--brown);
+}
+.site-header .nav-links a:hover::after,
+.site-header .nav-links a:focus-visible::after,
+.site-header .nav-links a.active::after,
+.site-header .nav-links a[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+.site-header .nav-links a:active {
+  color: var(--brown-dark);
+}
+
+/* hamburger + mobile menu */
+.site-header .menu-btn {
+  display: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  line-height: 1;
+  transition: background var(--ui-fast) var(--ui-ease);
+}
+.site-header .menu-btn:hover {
+  background: var(--light);
+}
+.site-header .menu-btn:active {
+  background: var(--border);
+}
+
+.site-header .mobile-nav a {
+  padding: 12px;
+  color: var(--muted);
+  transition:
+    background var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease);
+}
+.site-header .mobile-nav a:hover {
+  background: var(--light);
+  color: var(--brown);
+}
+.site-header .mobile-nav a:active {
+  background: var(--border);
+}
+.site-header .mobile-nav a.active,
+.site-header .mobile-nav a[aria-current="page"] {
+  background: var(--brown);
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .site-header .nav-links {
+    display: none;
+  }
+  .site-header .menu-btn {
+    display: inline-flex;
+  }
+  .site-header .mobile-nav {
+    display: none;
+  }
+  .site-header .mobile-nav.show {
+    display: block;
+  }
+}
+@media (min-width: 901px) {
+  .site-header .mobile-nav,
+  .site-header .mobile-nav.show {
+    display: none;
+  }
+}
+
+/* ---------- 3. Buttons: one rule per VARIANT ----------
+   Primary  (Book Now)       brown fill  -> darker brown + lift
+   Outline  (View Services)  white fill  -> light tint + brown border
+   Danger                    pink fill   -> deeper pink
+   Same variant = same hover everywhere; variants stay different. */
+.btn,
+.bk-pay,
+.hp-submit {
+  transition:
+    background-color var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease),
+    border-color var(--ui-fast) var(--ui-ease),
+    box-shadow var(--ui-fast) var(--ui-ease),
+    transform var(--ui-fast) var(--ui-ease);
+}
+
+.btn-primary:hover,
+.bk-pay:not(.alt):hover:not(:disabled),
+.hp-submit:hover:not(:disabled) {
+  background: var(--brown-dark);
+  box-shadow: var(--ui-lift);
+  transform: translateY(-1px);
+}
+
+.btn-outline:hover,
+.bk-pay.alt:hover:not(:disabled) {
+  background: var(--light);
+  border-color: var(--brown);
+  color: var(--brown-dark);
+  box-shadow: 0 4px 12px rgba(89, 66, 55, 0.1);
+  transform: translateY(-1px);
+}
+
+.btn-danger:hover {
+  background: #fecaca;
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.15);
+  transform: translateY(-1px);
+}
+
+/* pressed (mouse + touch) */
+.btn:active,
+.bk-pay:not(:disabled):active,
+.hp-submit:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.btn-primary:active,
+.bk-pay:not(.alt):not(:disabled):active {
+  background: #4a362c;
+}
+.btn-outline:active,
+.bk-pay.alt:not(:disabled):active {
+  background: var(--border);
+}
+
+/* ---------- 4. Keyboard focus (visible on every interactive element) ---------- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--brown);
+  outline-offset: 2px;
+}
+.btn:focus-visible,
+.bk-pay:focus-visible,
+.hp-submit:focus-visible {
+  outline: 0;
+  box-shadow: var(--ui-focus);
+}
+
+/* ---------- 5. Cards & interactive components ---------- */
+.card,
+.hp-topic,
+.pkg-slide,
+.pkg-pick-card,
+.method,
+.addon-row {
+  transition:
+    box-shadow var(--ui-fast) var(--ui-ease),
+    border-color var(--ui-fast) var(--ui-ease),
+    background-color var(--ui-fast) var(--ui-ease),
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+.card:not(.form-card):hover {
+  border-color: #d9cbc0;
+  box-shadow: var(--ui-card-shadow);
+}
+.hp-topic:hover {
+  border-color: var(--brown);
+  box-shadow: var(--ui-card-shadow);
+  transform: translateY(-2px);
+}
+.hp-topic:active {
+  transform: translateY(0);
+}
+.hp-q-btn {
+  transition: background-color var(--ui-fast) var(--ui-ease);
+}
+.hp-q-btn:hover {
+  background: var(--light);
+}
+.hp-star {
+  transition:
+    transform var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast);
+}
+.hp-star:hover {
+  transform: scale(1.1);
+}
+
+/* carousel: keep the existing scale() on slides, only add feedback */
+.pkg-slide.is-side:hover {
+  opacity: 0.85;
+  filter: none;
+}
+.pkg-slide.is-center:hover {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+}
+.pkg-dot {
+  transition:
+    background-color var(--ui-fast),
+    width var(--ui-fast);
+}
+.pkg-dot:not(.is-active):hover {
+  background: #cdbcae;
+}
+.pkg-nav-btn:active {
+  transform: scale(0.95);
+}
+
+.bk-nav {
+  transition: background-color var(--ui-fast) var(--ui-ease);
+}
+.bk-day {
+  transition: background-color var(--ui-fast) var(--ui-ease);
+}
+
+/* ---------- 6. Text links (footer, inline) ---------- */
+.footer-links a,
+.footer a {
+  transition: color var(--ui-fast) var(--ui-ease);
+}
+.footer-links a:hover,
+.footer a:hover {
+  color: var(--brown);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- 7. Respect reduced-motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .btn:hover,
+  .bk-pay:hover,
+  .hp-submit:hover,
+  .hp-topic:hover {
+    transform: none !important;
+  }
+}
+
+/* touch devices: hover lift would "stick" after tapping */
+@media (hover: none) {
+  .btn:hover,
+  .bk-pay:hover,
+  .hp-submit:hover,
+  .hp-topic:hover {
+    transform: none;
+  }
+}
