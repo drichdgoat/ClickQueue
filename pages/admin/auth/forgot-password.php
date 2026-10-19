@@ -3,7 +3,13 @@
 session_start();
 
 require_once "../../../config/database.php";
-require_once "../../../config/mail.php";
+require_once "../../../includes/auth-ui.php";
+
+// config/mail.php holds SMTP credentials and is not committed (see config/mail.example.php)
+$mailConfigured = is_file(__DIR__ . "/../../../config/mail.php");
+if ($mailConfigured) {
+    require_once __DIR__ . "/../../../config/mail.php";
+}
 
 require_once "../../../includes/PHPMailer/src/Exception.php";
 require_once "../../../includes/PHPMailer/src/PHPMailer.php";
@@ -13,19 +19,21 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-$message = "";
+$alert = "";   // Banner at the top of the card
+$errors = [];  // Field errors, keyed by input id
+$email = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $email = trim($_POST["email"] ?? "");
 
-    if (empty($email)) {
+    if ($email === "") {
 
-        $message = '<div class="notice error" style="color:#b91c1c;background:#fee2e2;font-weight:600;padding:12px 14px;border-radius:8px;text-align:center;margin-top:16px;">Please enter your email address.</div>';
+        $errors["email"] = "Please enter your email.";
 
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
-        $message = '<div class="notice error" style="color:#b91c1c;background:#fee2e2;font-weight:600;padding:12px 14px;border-radius:8px;text-align:center;margin-top:16px;">Please enter a valid email address.</div>';
+        $errors["email"] = "Please enter a valid email address.";
 
     } else {
 
@@ -33,7 +41,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->execute([$email]);
         $admin = $stmt->fetch();
 
-        if ($admin) {
+        if ($admin && !$mailConfigured) {
+
+            error_log("Password reset requested but config/mail.php is missing; no email sent.");
+
+        } elseif ($admin) {
 
             $rawToken = bin2hex(random_bytes(32));
             $hashedToken = hash("sha256", $rawToken);
@@ -44,7 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             );
             $update->execute([$hashedToken, $expiresAt, $admin["id"]]);
 
-            $resetLink = APP_BASE_URL . "/admin/pages/reset-password.php?token=" . $rawToken;
+            $resetLink = rtrim(APP_BASE_URL, "/") . "/pages/admin/auth/reset-password.php?token=" . $rawToken;
 
             $mail = new PHPMailer(true);
 
@@ -74,14 +86,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $mail->send();
 
             } catch (Exception $e) {
-                // Fail silently to the user (avoid leaking mail errors),
-                // but you can log $mail->ErrorInfo somewhere for debugging.
+                // Fail silently to the user (avoid leaking mail errors)
+                error_log("Password reset email failed: " . $mail->ErrorInfo);
             }
         }
 
         // Always show the same message, whether or not the email exists.
         // This avoids revealing which emails are registered admins.
-        $message = '<div class="notice success" style="color:#166534;background:#dcfce7;font-weight:600;padding:12px 14px;border-radius:8px;text-align:center;margin-top:16px;">If an account exists with that email, a password reset link has been sent.</div>';
+        $alert = auth_alert("success", "Check your email", "If an account exists for that address, we've sent a reset link.");
     }
 }
 
@@ -96,60 +108,71 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     <title>Forgot Password - SnapVenture</title>
 
-    <link rel="stylesheet" href="../../../css/login.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="../../../css/auth.css" />
 </head>
 
 <body>
 
-    <div class="login-page">
+    <div class="auth-shell">
 
-        <div class="login-box">
+        <a class="auth-brand" href="../../../index.php">
+            <img src="../../../images/snapventure_logo.jpg" alt="SnapVenture Logo" />
+            <span>
+                <span class="auth-brand-name">SnapVenture</span>
+                <span class="auth-brand-tag">Admin</span>
+            </span>
+        </a>
 
-            <img
-                class="logo"
-                src="../../../images/logo.png"
-                alt="SnapVenture Logo"
-            />
+        <a class="auth-back" href="../../../index.php">&larr; Website</a>
 
-            <h1>Forgot Password</h1>
+        <main class="auth-main">
 
-            <p>Enter your email and we'll send you a reset link</p>
+            <div class="auth-card">
 
-            <form method="POST" action="forgot-password.php">
+                <h1>Forgot Password</h1>
+                <p class="auth-sub">Enter your email and we'll send you a reset link</p>
 
-                <div class="field">
+                <?php echo $alert; ?>
 
-                    <label for="email">Email</label>
+                <form method="POST" action="forgot-password.php" novalidate>
 
-                    <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        required
-                    />
+                    <div class="field">
+                        <label for="email">Email</label>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            placeholder="Enter your email"
+                            autocomplete="email"
+                            maxlength="150"
+                            value="<?php echo htmlspecialchars($email); ?>"
+                            <?php echo auth_field_attrs($errors, "email"); ?>
+                            required
+                        />
+                        <?php echo auth_field_message($errors, "email"); ?>
+                    </div>
 
-                </div>
+                    <button type="submit" class="btn btn-primary">
+                        Send Reset Link
+                    </button>
 
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                    style="width: 100%"
-                >
-                    Send Reset Link
-                </button>
+                </form>
 
-            </form>
+            </div>
 
-            <?php echo $message; ?>
-
-            <p style="margin-top: 20px">
-                <a href="login.php">← Back to login</a>
+            <p class="auth-foot">
+                Remembered it? <a href="login.php">Back to sign in</a>
             </p>
 
-        </div>
+        </main>
 
     </div>
+
+    <script src="../../../js/auth.js"></script>
 
 </body>
 

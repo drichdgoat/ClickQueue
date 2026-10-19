@@ -3,85 +3,55 @@
 session_start();
 
 require_once "../../../config/database.php";
-require_once "../../../config/mail.php";
+require_once "../../../includes/auth-ui.php";
 
-require_once "../../../includes/PHPMailer/src/Exception.php";
-require_once "../../../includes/PHPMailer/src/PHPMailer.php";
-require_once "../../../includes/PHPMailer/src/SMTP.php";
+$errors = [];  // Field errors, keyed by input id
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
+// Token comes from the emailed link (GET) and is carried through the form (POST)
+$token = trim($_GET["token"] ?? $_POST["token"] ?? "");
+$admin = null;
 
-$message = "";
+if (preg_match('/^[a-f0-9]{64}$/', $token)) {
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    // Only the SHA-256 hash of the token is stored (see forgot-password.php)
+    $stmt = $pdo->prepare(
+        "SELECT id, reset_expires FROM admins WHERE reset_token = ?"
+    );
+    $stmt->execute([hash("sha256", $token)]);
+    $admin = $stmt->fetch();
 
-    $email = trim($_POST["email"] ?? "");
+    // Expiry was written with PHP's date(), so compare in PHP to avoid
+    // MySQL/PHP timezone mismatches
+    if ($admin && strtotime($admin["reset_expires"]) < time()) {
+        $admin = null;
+    }
+}
 
-    if (empty($email)) {
+if ($admin && $_SERVER["REQUEST_METHOD"] === "POST") {
 
-        $message = '<div class="notice error" style="color:#b91c1c;background:#fee2e2;font-weight:600;padding:12px 14px;border-radius:8px;text-align:center;margin-top:16px;">Please enter your email address.</div>';
+    $errors = auth_validate_new_password(
+        $_POST["password"] ?? "",
+        $_POST["confirm_password"] ?? ""
+    );
 
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (!$errors) {
 
-        $message = '<div class="notice error" style="color:#b91c1c;background:#fee2e2;font-weight:600;padding:12px 14px;border-radius:8px;text-align:center;margin-top:16px;">Please enter a valid email address.</div>';
+        // Save the new password and invalidate the token so the link can't be reused
+        $update = $pdo->prepare(
+            "UPDATE admins
+             SET password = ?, reset_token = NULL, reset_expires = NULL
+             WHERE id = ?"
+        );
+        $update->execute([
+            password_hash($_POST["password"], PASSWORD_DEFAULT),
+            $admin["id"]
+        ]);
 
-    } else {
+        // Lets login.php show the "Password updated" banner
+        $_SESSION["password_reset"] = true;
 
-        $stmt = $pdo->prepare("SELECT id, name FROM admins WHERE email = ?");
-        $stmt->execute([$email]);
-        $admin = $stmt->fetch();
-
-        if ($admin) {
-
-            $rawToken = bin2hex(random_bytes(32));
-            $hashedToken = hash("sha256", $rawToken);
-            $expiresAt = date("Y-m-d H:i:s", strtotime("+1 hour"));
-
-            $update = $pdo->prepare(
-                "UPDATE admins SET reset_token = ?, reset_expires = ? WHERE id = ?"
-            );
-            $update->execute([$hashedToken, $expiresAt, $admin["id"]]);
-
-            $resetLink = APP_BASE_URL . "/admin/pages/reset-password.php?token=" . $rawToken;
-
-            $mail = new PHPMailer(true);
-
-            try {
-
-                $mail->isSMTP();
-                $mail->Host = SMTP_HOST;
-                $mail->SMTPAuth = true;
-                $mail->Username = SMTP_USERNAME;
-                $mail->Password = SMTP_PASSWORD;
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port = SMTP_PORT;
-
-                $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
-                $mail->addAddress($email, $admin["name"]);
-
-                $mail->isHTML(true);
-                $mail->Subject = "SnapVenture Admin - Password Reset";
-                $mail->Body = "
-                    <p>Hi " . htmlspecialchars($admin["name"]) . ",</p>
-                    <p>We received a request to reset your SnapVenture admin password.</p>
-                    <p><a href=\"" . $resetLink . "\">Click here to reset your password</a></p>
-                    <p>This link will expire in 1 hour. If you did not request this, you can ignore this email.</p>
-                ";
-                $mail->AltBody = "Reset your SnapVenture admin password: " . $resetLink . " (expires in 1 hour)";
-
-                $mail->send();
-
-            } catch (Exception $e) {
-                // Fail silently to the user (avoid leaking mail errors),
-                // but you can log $mail->ErrorInfo somewhere for debugging.
-            }
-        }
-
-        // Always show the same message, whether or not the email exists.
-        // This avoids revealing which emails are registered admins.
-        $message = '<div class="notice success" style="color:#166534;background:#dcfce7;font-weight:600;padding:12px 14px;border-radius:8px;text-align:center;margin-top:16px;">If an account exists with that email, a password reset link has been sent.</div>';
+        header("Location: login.php?reset=success");
+        exit;
     }
 }
 
@@ -94,62 +64,123 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
 
-    <title>Forgot Password - SnapVenture</title>
+    <title>Reset Password - SnapVenture</title>
 
-    <link rel="stylesheet" href="../../../css/login.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="../../../css/auth.css" />
 </head>
 
 <body>
 
-    <div class="login-page">
+    <div class="auth-shell">
 
-        <div class="login-box">
+        <a class="auth-brand" href="../../../index.php">
+            <img src="../../../images/snapventure_logo.jpg" alt="SnapVenture Logo" />
+            <span>
+                <span class="auth-brand-name">SnapVenture</span>
+                <span class="auth-brand-tag">Admin</span>
+            </span>
+        </a>
 
-            <img
-                class="logo"
-                src="../../../images/logo.png"
-                alt="SnapVenture Logo"
-            />
+        <a class="auth-back" href="../../../index.php">&larr; Website</a>
 
-            <h1>Forgot Password</h1>
+        <main class="auth-main">
 
-            <p>Enter your email and we'll send you a reset link</p>
+            <div class="auth-card">
 
-            <form method="POST" action="forgot-password.php">
+                <h1>Reset Password</h1>
 
-                <div class="field">
+                <?php if ($admin): ?>
 
-                    <label for="email">Email</label>
+                <p class="auth-sub">Choose a new password for your account</p>
+
+                <form method="POST" action="reset-password.php" novalidate>
 
                     <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        required
+                        type="hidden"
+                        name="token"
+                        value="<?php echo htmlspecialchars($token); ?>"
                     />
 
-                </div>
+                    <div class="field">
+                        <label for="password">New Password</label>
+                        <div class="password-wrap">
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                placeholder="Create a new password"
+                                autocomplete="new-password"
+                                minlength="<?php echo AUTH_MIN_PASSWORD_LENGTH; ?>"
+                                <?php echo auth_field_attrs($errors, "password", true); ?>
+                                required
+                            />
+                            <!-- One toggle shows/hides both password fields -->
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                aria-controls="password confirm_password"
+                                aria-label="Show passwords"
+                                aria-pressed="false"
+                            >
+                                <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M9.9 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.6 3.6M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6" />
+                                    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                                    <path d="M3 3l18 18" />
+                                </svg>
+                            </button>
+                        </div>
+                        <?php echo auth_field_message($errors, "password", "At least " . AUTH_MIN_PASSWORD_LENGTH . " characters."); ?>
+                    </div>
 
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                    style="width: 100%"
-                >
-                    Send Reset Link
-                </button>
+                    <div class="field">
+                        <label for="confirm_password">Confirm Password</label>
+                        <input
+                            id="confirm_password"
+                            name="confirm_password"
+                            type="password"
+                            placeholder="Re-enter your new password"
+                            autocomplete="new-password"
+                            <?php echo auth_field_attrs($errors, "confirm_password"); ?>
+                            required
+                        />
+                        <?php echo auth_field_message($errors, "confirm_password"); ?>
+                    </div>
 
-            </form>
+                    <button type="submit" class="btn btn-primary">
+                        Reset Password
+                    </button>
 
-            <?php echo $message; ?>
+                </form>
 
-            <p style="margin-top: 20px">
-                <a href="login.php">← Back to login</a>
+                <?php else: ?>
+
+                <p class="auth-sub">&nbsp;</p>
+
+                <?php echo auth_alert("error", "Link invalid or expired", "Reset links work once and expire after 1 hour."); ?>
+
+                <a class="btn btn-primary" href="forgot-password.php">Request a New Link</a>
+
+                <?php endif; ?>
+
+            </div>
+
+            <p class="auth-foot">
+                <a href="login.php">Back to sign in</a>
             </p>
 
-        </div>
+        </main>
 
     </div>
+
+    <script src="../../../js/auth.js"></script>
 
 </body>
 
