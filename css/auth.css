@@ -1,0 +1,596 @@
+/* SnapVenture - Admin auth pages (login, register, forgot/reset password) */
+
+/* Global */
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --brown: #6b5244;
+  --brown-dark: #594237;
+  --cream: #faf8f5;
+  --light: #f3eee9;
+  --border: #e8dfd8;
+  --white: #ffffff;
+  --text: #3f332d;
+  --muted: #756a63;
+  --frame: #e6dfd8;
+  --green: #166534;
+  --red: #b91c1c;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 24px;
+  font-family: "Poppins", Arial, Helvetica, sans-serif;
+  color: var(--text);
+  background: var(--frame);
+  line-height: 1.5;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+/* Framed photo panel. Background: "Vintage camera and flowers", CC0 (Wikimedia Commons / Unsplash) */
+.auth-shell {
+  position: relative;
+  min-height: calc(100vh - 48px);
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--cream) url("../images/auth/auth-bg.jpg") right center / cover no-repeat;
+  box-shadow: 0 30px 60px rgba(63, 51, 45, 0.18);
+}
+
+/* Soft cream wash on the left so the card reads cleanly over the photo */
+.auth-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(250, 248, 245, 0.7) 0%,
+    rgba(250, 248, 245, 0.35) 40%,
+    rgba(250, 248, 245, 0) 65%
+  );
+  pointer-events: none;
+}
+
+/* Brand (top-left) */
+.auth-brand {
+  position: absolute;
+  top: 32px;
+  left: clamp(24px, 6vw, 88px);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.auth-brand img {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(63, 51, 45, 0.15);
+}
+
+.auth-brand-name {
+  display: block;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--brown-dark);
+  line-height: 1.1;
+}
+
+.auth-brand-tag {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.auth-back {
+  position: absolute;
+  top: 40px;
+  right: clamp(24px, 4vw, 48px);
+  z-index: 1;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--brown-dark);
+  backdrop-filter: blur(6px);
+  transition: background 0.2s;
+}
+
+.auth-back:hover {
+  background: var(--white);
+}
+
+/* Card column */
+.auth-main {
+  position: relative;
+  z-index: 1;
+  min-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: min(400px, 100%);
+  margin-left: clamp(24px, 6vw, 88px);
+  padding: 110px 0 40px;
+}
+
+.auth-card {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 34px 32px 32px;
+  box-shadow: 0 20px 50px rgba(63, 51, 45, 0.14);
+  animation: auth-rise 0.5s ease-out both;
+}
+
+.auth-card h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+}
+
+.auth-sub {
+  margin: 2px 0 24px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* Form fields */
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.field input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--text);
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field input::placeholder {
+  color: #b3a89f;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--brown);
+  box-shadow: 0 0 0 3px rgba(107, 82, 68, 0.15);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.field input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.12);
+}
+
+/* Text under an input: a hint, or the field's error */
+.field-hint,
+.field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.field-hint {
+  color: var(--muted);
+}
+
+.field-error {
+  color: var(--red);
+}
+
+/* Show / hide password */
+.password-wrap {
+  position: relative;
+}
+
+.password-wrap input {
+  padding-right: 46px;
+}
+
+/* Hide Edge's built-in reveal button so there's only one toggle */
+.password-wrap input::-ms-reveal {
+  display: none;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.password-toggle:hover {
+  color: var(--brown);
+  background: var(--light);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--brown);
+  outline-offset: 1px;
+}
+
+.password-toggle svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.password-toggle .icon-eye-off,
+.password-toggle[aria-pressed="true"] .icon-eye {
+  display: none;
+}
+
+.password-toggle[aria-pressed="true"] .icon-eye-off {
+  display: block;
+}
+
+.auth-forgot {
+  margin: -4px 0 20px;
+  text-align: right;
+  font-size: 13px;
+}
+
+.auth-forgot a,
+.auth-foot a,
+.auth-link {
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-forgot a:hover,
+.auth-foot a:hover,
+.auth-link:hover {
+  color: var(--brown);
+}
+
+/* Buttons */
+.btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 22px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-primary {
+  margin-top: 4px;
+  background: var(--brown);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background: var(--brown-dark);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-primary:focus-visible {
+  outline: 3px solid rgba(107, 82, 68, 0.35);
+  outline-offset: 2px;
+}
+
+/* Text under the card - frosted pill so it stays readable over the photo */
+.auth-foot {
+  align-self: center;
+  margin: 20px 0 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 4px 14px rgba(63, 51, 45, 0.1);
+  backdrop-filter: blur(6px);
+  text-align: center;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.auth-foot a {
+  color: var(--brown);
+  font-weight: 600;
+}
+
+.auth-foot a:hover {
+  color: var(--brown-dark);
+}
+
+/* Banner at the top of the card (success / error) */
+.auth-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -6px 0 22px;
+  padding: 12px 14px;
+  border: 1px solid;
+  border-left-width: 4px;
+  border-radius: 10px;
+  text-align: left;
+  animation: alert-slide 0.45s ease-out both;
+}
+
+.auth-alert.success {
+  border-color: #cfe5d5;
+  border-left-color: var(--green);
+  background: #f2f9f4;
+}
+
+.auth-alert.error {
+  border-color: #f3d3d3;
+  border-left-color: var(--red);
+  background: #fdf4f4;
+}
+
+.auth-alert-icon {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+}
+
+.auth-alert.success .auth-alert-icon circle {
+  fill: var(--green);
+}
+
+.auth-alert.error .auth-alert-icon circle {
+  fill: var(--red);
+}
+
+.auth-alert-icon path {
+  fill: none;
+  stroke: var(--white);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The success tick draws itself in */
+.auth-alert-check {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  animation: success-stroke 0.35s ease-out 0.35s forwards;
+}
+
+.auth-alert strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.auth-alert span {
+  display: block;
+  font-size: 13px;
+}
+
+.auth-alert.success strong {
+  color: var(--green);
+}
+
+.auth-alert.success span {
+  color: #3f6b4e;
+}
+
+.auth-alert.error strong {
+  color: var(--red);
+}
+
+.auth-alert.error span {
+  color: #8a3d3d;
+}
+
+@keyframes alert-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Registration success + redirect */
+.register-success {
+  text-align: center;
+  animation: success-fade-in 0.4s ease-out both;
+}
+
+.register-success h1 {
+  margin-top: 12px;
+}
+
+.register-success .auth-sub {
+  margin-bottom: 0;
+}
+
+.success-check {
+  width: 72px;
+  height: 72px;
+  display: block;
+  margin: 4px auto 0;
+  animation: success-pop 0.35s ease-out 0.75s both;
+}
+
+.success-check-circle {
+  fill: none;
+  stroke: var(--brown);
+  stroke-width: 2;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: success-stroke 0.6s ease-in-out forwards;
+}
+
+.success-check-mark {
+  fill: none;
+  stroke: var(--brown);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 36;
+  stroke-dashoffset: 36;
+  animation: success-stroke 0.35s ease-out 0.55s forwards;
+}
+
+.redirect-progress {
+  height: 4px;
+  width: 70%;
+  margin: 18px auto 0;
+  background: var(--light);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.redirect-progress span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--brown);
+  border-radius: inherit;
+  transform-origin: left;
+  transform: scaleX(0);
+  animation: redirect-fill 3s linear forwards;
+}
+
+.redirect-link {
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+
+/* Animations */
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes success-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes success-pop {
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes success-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes redirect-fill {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card,
+  .auth-alert,
+  .auth-alert-check,
+  .register-success,
+  .success-check,
+  .success-check-circle,
+  .success-check-mark {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .redirect-progress span {
+    animation-timing-function: steps(3);
+  }
+}
+
+/* Tablet / mobile: centre the card over the photo */
+@media (max-width: 760px) {
+  body {
+    padding: 0;
+  }
+
+  .auth-shell {
+    min-height: 100vh;
+    border-radius: 0;
+    background-position: 72% center;
+  }
+
+  .auth-shell::before {
+    background: rgba(250, 248, 245, 0.55);
+  }
+
+  .auth-brand {
+    top: 24px;
+    left: 16px;
+  }
+
+  .auth-back {
+    top: 30px;
+    right: 16px;
+  }
+
+  .auth-main {
+    min-height: 100vh;
+    width: auto;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 100px 16px 32px;
+  }
+
+  .auth-card {
+    padding: 28px 22px 24px;
+  }
+}

@@ -3,11 +3,23 @@
 session_start();
 
 require_once "../../../config/database.php";
+require_once "../../../includes/auth-ui.php";
 
-$message = "";
+$alert = "";   // Banner at the top of the card
+$errors = [];  // Field errors, keyed by input id
+$email = "";
 
-if (isset($_GET["reset"]) && $_GET["reset"] === "success") {
-    $message = '<div class="notice success" style="color:#166534;background:#dcfce7;font-weight:600;padding:12px 14px;border-radius:8px;text-align:center;margin-top:16px;">Your password has been reset. You can now sign in.</div>';
+// Success banners only show when the session confirms the action really happened,
+// so visiting login.php?registered=1 directly shows nothing
+if (isset($_GET["registered"]) && isset($_SESSION["registered_email"])) {
+    $alert = auth_alert("success", "Account created successfully", "Please sign in to continue.");
+    $email = $_SESSION["registered_email"];
+    unset($_SESSION["registered_email"]);
+}
+
+if (isset($_GET["reset"]) && !empty($_SESSION["password_reset"])) {
+    $alert = auth_alert("success", "Password updated", "Sign in with your new password.");
+    unset($_SESSION["password_reset"]);
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -15,11 +27,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST["email"] ?? "");
     $password = $_POST["password"] ?? "";
 
-    if (empty($email) || empty($password)) {
+    if ($email === "") {
+        $errors["email"] = "Please enter your email.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors["email"] = "Please enter a valid email address.";
+    }
 
-        $message = '<div class="notice error" style="color:#b91c1c;background:#fee2e2;font-weight:600;padding:12px 14px;border-radius:8px;text-align:center;margin-top:16px;">Please enter your email and password.</div>';
+    if ($password === "") {
+        $errors["password"] = "Please enter your password.";
+    }
 
-    } else {
+    if (!$errors) {
 
         $stmt = $pdo->prepare("SELECT * FROM admins WHERE email = ?");
         $stmt->execute([$email]);
@@ -35,11 +53,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             header("Location: ../dashboard.php");
             exit;
 
-        } else {
-
-            $message = '<div class="notice error" style="color:#b91c1c;background:#fee2e2;font-weight:600;padding:12px 14px;border-radius:8px;text-align:center;margin-top:16px;">Incorrect email or password.</div>';
-
         }
+
+        // Don't reveal whether the email or the password was wrong
+        $alert = auth_alert("error", "Incorrect email or password", "Check your details and try again.");
     }
 }
 
@@ -54,91 +71,108 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     <title>Admin Login - SnapVenture</title>
 
-    <link rel="stylesheet" href="../../../css/login.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="../../../css/auth.css" />
 </head>
 
 <body>
 
-    <div class="login-page">
+    <div class="auth-shell">
 
-        <div class="login-box">
+        <a class="auth-brand" href="../../../index.php">
+            <img src="../../../images/snapventure_logo.jpg" alt="SnapVenture Logo" />
+            <span>
+                <span class="auth-brand-name">SnapVenture</span>
+                <span class="auth-brand-tag">Admin</span>
+            </span>
+        </a>
 
-            <img
-                class="logo"
-                src="../../../images/snapventure_logo.jpg"
-                alt="SnapVenture Logo"
-            />
+        <a class="auth-back" href="../../../index.php">&larr; Website</a>
 
-            <h1>Sign in to your account</h1>
+        <main class="auth-main">
 
-            <p>Admin Login</p>
+            <div class="auth-card">
 
-            <form method="POST" action="login.php">
+                <h1>Admin Login</h1>
+                <p class="auth-sub">Please enter your details</p>
 
-                <div class="field">
+                <?php echo $alert; ?>
 
-                    <label for="loginEmail">Email</label>
+                <form method="POST" action="login.php" novalidate>
 
-                    <input
-                        id="loginEmail"
-                        name="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        value="<?php echo htmlspecialchars($email ?? ""); ?>"
-                        required
-                    />
+                    <div class="field">
+                        <label for="email">Email</label>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            placeholder="Enter your email"
+                            autocomplete="email"
+                            maxlength="150"
+                            value="<?php echo htmlspecialchars($email); ?>"
+                            <?php echo auth_field_attrs($errors, "email"); ?>
+                            required
+                        />
+                        <?php echo auth_field_message($errors, "email"); ?>
+                    </div>
 
-                </div>
+                    <div class="field">
+                        <label for="password">Password</label>
+                        <div class="password-wrap">
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                placeholder="Enter your password"
+                                autocomplete="current-password"
+                                <?php echo auth_field_attrs($errors, "password"); ?>
+                                required
+                            />
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                aria-controls="password"
+                                aria-label="Show password"
+                                aria-pressed="false"
+                            >
+                                <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M9.9 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.6 3.6M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6" />
+                                    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                                    <path d="M3 3l18 18" />
+                                </svg>
+                            </button>
+                        </div>
+                        <?php echo auth_field_message($errors, "password"); ?>
+                    </div>
 
-                <div class="field">
+                    <p class="auth-forgot">
+                        <a href="forgot-password.php">Forgot password?</a>
+                    </p>
 
-                    <label for="loginPassword">Password</label>
+                    <button type="submit" class="btn btn-primary">
+                        Sign in
+                    </button>
 
-                    <input
-                        id="loginPassword"
-                        name="password"
-                        type="password"
-                        placeholder="Enter your password"
-                        required
-                    />
+                </form>
 
-                </div>
+            </div>
 
-                <p style="text-align:right; margin: -8px 0 18px;">
-                    <a href="forgot-password.php" style="font-size: 14px; color: var(--brown);">
-                        Forgot password?
-                    </a>
-                </p>
-
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                    style="width: 100%"
-                >
-                    Sign In
-                </button>
-
-            </form>
-
-            <?php echo $message; ?>
-
-            <p style="margin-top: 20px">
-
-                <a href="../../../index.php">
-                    ← Website
-                </a>
-
-                ·
-
-                <a href="register.php">
-                    Create account
-                </a>
-
+            <p class="auth-foot">
+                Are you new? <a href="register.php">Create an Account</a>
             </p>
 
-        </div>
+        </main>
 
     </div>
+
+    <script src="../../../js/auth.js"></script>
 
 </body>
 
