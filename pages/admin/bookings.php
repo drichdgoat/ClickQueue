@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['booking_id'], $_POST[
 
 /* ---------------- search ---------------- */
 $q = trim($_GET['q'] ?? '');
-$sql = "SELECT b.booking_id, b.reference_no, c.full_name, c.email, b.service_type,
+$sql = "SELECT b.booking_id, b.reference_no, COALESCE(b.contact_name, c.full_name) AS full_name, c.email, b.service_type,
                b.event_date, b.grand_total, b.amount_due_now, b.remaining_balance,
                b.payment_method, b.payment_status, b.status,
                cam.name AS camera_name, pb.name AS photobooth_name
@@ -31,7 +31,7 @@ $sql = "SELECT b.booking_id, b.reference_no, c.full_name, c.email, b.service_typ
         LEFT JOIN photobooth_packages pb ON pb.photobooth_id = bpd.photobooth_id";
 $params = [];
 if ($q !== '') {
-    $sql .= " WHERE b.reference_no LIKE ? OR c.full_name LIKE ? OR c.email LIKE ?";
+    $sql .= " WHERE b.reference_no LIKE ? OR COALESCE(b.contact_name, c.full_name) LIKE ? OR c.email LIKE ?";
     $like = "%$q%";
     $params = [$like, $like, $like];
 }
