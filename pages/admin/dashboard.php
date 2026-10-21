@@ -22,7 +22,7 @@ $photoboothBookings = (int) $pdo->query("SELECT COUNT(*) FROM bookings WHERE ser
 
 /* ---------------- recent bookings ---------------- */
 $recent = $pdo->query(
-    "SELECT b.reference_no, c.full_name, b.service_type, b.event_date, b.grand_total, b.amount_due_now, b.status
+    "SELECT b.reference_no, COALESCE(b.contact_name, c.full_name) AS full_name, b.service_type, b.event_date, b.grand_total, b.amount_due_now, b.status
      FROM bookings b JOIN customers c ON c.customer_id = b.customer_id
      ORDER BY b.created_at DESC LIMIT 8"
 )->fetchAll();

@@ -157,8 +157,8 @@ function getCameraCatalogAdmin(PDO $pdo): array {
                 $cam['flat_hourly'] = $t->fetch();
                 break;
             case 'per_photo':
-                $t = $pdo->prepare("SELECT tier_id, min_qty, max_qty, price_per_photo FROM camera_per_photo_rates WHERE camera_id = ? ORDER BY min_qty ASC");
                 $t = $pdo->prepare("SELECT min_qty, max_qty, price_per_photo FROM camera_per_photo_rates WHERE camera_id = ? ORDER BY min_qty ASC");
+                $t->execute([$id]);
                 $cam['photo_tiers'] = $t->fetchAll();
                 break;
         }
@@ -399,7 +399,11 @@ function buildPhotoboothBookingSummary(PDO $pdo, int $photoboothId, array $addon
  */
 function getBookingByReference(PDO $pdo, string $referenceNo): ?array {
     $stmt = $pdo->prepare(
-        "SELECT b.*, c.full_name, c.phone, c.facebook_name, c.email
+        "SELECT b.*,
+                COALESCE(b.contact_name, c.full_name)         AS full_name,
+                COALESCE(b.contact_phone, c.phone)            AS phone,
+                COALESCE(b.contact_facebook, c.facebook_name) AS facebook_name,
+                c.email
          FROM bookings b
          JOIN customers c ON c.customer_id = b.customer_id
          WHERE b.reference_no = ? LIMIT 1"

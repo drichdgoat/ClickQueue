@@ -1,17 +1,4 @@
--- =====================================================================
--- SnapVenture migration 001 - booking review audit columns + Agreement Management
--- Target: MariaDB 10.4 / MySQL, InnoDB, utf8mb4 (same as the existing dump).
---
--- SAFE TO RE-RUN. It only ADDs (columns use IF NOT EXISTS, tables use
--- CREATE TABLE IF NOT EXISTS). It never DROPs, TRUNCATEs or rewrites existing data.
---
--- HOW TO APPLY (local XAMPP):
---   1. Export a backup first: phpMyAdmin > snapventure > Export > Quick > Go.
---   2. phpMyAdmin > snapventure > SQL tab > paste this whole file > Go.
---      (or: mysql -u root snapventure < database/migrations/001_booking_review_and_agreements.sql)
--- =====================================================================
 
--- 1) Audit columns on the existing bookings table (all nullable, no data changed)
 ALTER TABLE `bookings`
   ADD COLUMN IF NOT EXISTS `payment_reviewed_by` int(11) DEFAULT NULL AFTER `confirmed_at`,
   ADD COLUMN IF NOT EXISTS `payment_reviewed_at` datetime DEFAULT NULL AFTER `payment_reviewed_by`,

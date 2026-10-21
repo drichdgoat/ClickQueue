@@ -27,6 +27,15 @@ function fail(int $code, string $message): void {
     exit;
 }
 
+/** Thrown inside the booking transaction so we can roll back, delete the receipt, then answer. */
+class BookingRejected extends RuntimeException {
+    public int $httpCode;
+    public function __construct(int $httpCode, string $message) {
+        parent::__construct($message);
+        $this->httpCode = $httpCode;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     fail(405, 'Method not allowed.');
 }
@@ -79,8 +88,11 @@ if (!$agreeTerms) {
 }
 $needsProof = $paymentMethod !== 'Over-the-Counter';
 
-/* ---------------- proof of payment upload ---------------- */
-$proofPath = null;
+/* ---------------- proof of payment: validate only (saved to disk last) ---------------- */
+// The file is NOT written to uploads/proofs until price + availability checks passed and the
+// booking row is locked, so a rejected booking never leaves an orphaned receipt behind.
+$proofTmp = null;
+$proofExt = null;
 if (isset($_FILES['proof_file']) && $_FILES['proof_file']['error'] !== UPLOAD_ERR_NO_FILE) {
     $file = $_FILES['proof_file'];
     if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -96,28 +108,30 @@ if (isset($_FILES['proof_file']) && $_FILES['proof_file']['error'] !== UPLOAD_ER
     if (!isset($allowed[$mime])) {
         fail(422, 'Proof of payment must be a PNG, JPG, or PDF file.');
     }
+    $proofTmp = $file['tmp_name'];
+    $proofExt = $allowed[$mime];
+} elseif ($needsProof) {
+    fail(422, 'Please upload your proof of payment for this payment method.');
+}
 
+/** Stores the validated upload. Returns the relative path, or throws BookingRejected. */
+function save_proof(string $tmp, string $ext): string {
     $uploadDir = __DIR__ . '/../../uploads/proofs/';
-    if (!is_dir($uploadDir)) {
-        if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
-            error_log('SnapVenture: could not create upload dir ' . $uploadDir);
-            fail(500, 'Server could not create the uploads folder. Please ask the site admin to create "uploads/proofs" and give it write permission (755).');
-        }
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+        error_log('SnapVenture: could not create upload dir ' . $uploadDir);
+        throw new BookingRejected(500, 'Server could not create the uploads folder. Please ask the site admin to create "uploads/proofs" and give it write permission (755).');
     }
     if (!is_writable($uploadDir)) {
         error_log('SnapVenture: upload dir not writable: ' . $uploadDir);
-        fail(500, 'Server cannot write to the uploads folder. Please ask the site admin to set "uploads/proofs" permission to 755.');
+        throw new BookingRejected(500, 'Server cannot write to the uploads folder. Please ask the site admin to set "uploads/proofs" permission to 755.');
     }
-
-    $filename = 'proof_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $allowed[$mime];
-    if (!move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+    $filename = 'proof_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    if (!move_uploaded_file($tmp, $uploadDir . $filename)) {
         $lastErr = error_get_last();
         error_log('SnapVenture: move_uploaded_file failed: ' . ($lastErr['message'] ?? 'unknown error'));
-        fail(500, 'Could not save the uploaded file. Please try again, or ask the site admin to check folder permissions on "uploads/proofs".');
+        throw new BookingRejected(500, 'Could not save the uploaded file. Please try again, or ask the site admin to check folder permissions on "uploads/proofs".');
     }
-    $proofPath = 'uploads/proofs/' . $filename;
-} elseif ($needsProof) {
-    fail(422, 'Please upload your proof of payment for this payment method.');
+    return 'uploads/proofs/' . $filename;
 }
 
 /* ---------------- authoritative price calculation ---------------- */
@@ -131,10 +145,6 @@ try {
         $photoQty = isset($_POST['photo_qty']) && $_POST['photo_qty'] !== '' ? (int) $_POST['photo_qty'] : null;
         $accessoryIds = array_map('intval', $_POST['accessory_ids'] ?? []);
 
-        if (isDateTaken($pdo, 'camera_rental', $cameraId, $eventDate)) {
-            fail(409, 'Sorry, that camera is already booked on this date. Please choose another date.');
-        }
-
         $summary = buildCameraBookingSummary($pdo, $cameraId, $days, $extraHours, $photoQty, $accessoryIds);
         $packageId = $cameraId;
 
@@ -144,10 +154,6 @@ try {
 
         $addonQtyMap = sanitizeAddonQty($_POST['addon_qty'] ?? []);
 
-        if (isDateTaken($pdo, 'photobooth', $photoboothId, $eventDate)) {
-            fail(409, 'Sorry, that package is already booked on this date. Please choose another date.');
-        }
-
         $summary = buildPhotoboothBookingSummary($pdo, $photoboothId, $addonQtyMap);
         $packageId = $photoboothId;
     }
@@ -156,8 +162,33 @@ try {
 }
 
 /* ---------------- save everything in a transaction ---------------- */
+$proofPath = null;
 try {
     $pdo->beginTransaction();
+
+    // Serialise bookings of the same package: whoever gets this row lock first checks and saves;
+    // the other request waits, then sees the committed booking and is rejected. The lock query MUST
+    // run before any plain SELECT so the availability check below reads fresh, committed data.
+    if ($serviceType === 'camera_rental') {
+        $lock = $pdo->prepare('SELECT camera_id FROM camera_packages WHERE camera_id = ? FOR UPDATE');
+        $lock->execute([$packageId]);
+    } else {
+        $lock = $pdo->prepare('SELECT photobooth_id FROM photobooth_packages WHERE photobooth_id = ? FOR UPDATE');
+        $lock->execute([$packageId]);
+    }
+    if (!$lock->fetchColumn()) {
+        throw new BookingRejected(422, 'Unknown package.');
+    }
+    if (isDateTaken($pdo, $serviceType, $packageId, $eventDate)) {
+        throw new BookingRejected(409, $serviceType === 'camera_rental'
+            ? 'Sorry, that camera is already booked on this date. Please choose another date.'
+            : 'Sorry, that package is already booked on this date. Please choose another date.');
+    }
+
+    // All checks passed: only now is the receipt written to disk.
+    if ($proofTmp !== null) {
+        $proofPath = save_proof($proofTmp, $proofExt);
+    }
 
     // find or create the customer
     $find = $pdo->prepare('SELECT customer_id FROM customers WHERE email = ?');
@@ -170,7 +201,7 @@ try {
         $ins->execute([$fullName, $phone, $facebook, $email]);
         $customerId = $pdo->lastInsertId();
     } else {
-        // keep contact info current
+        // keep the customer's latest contact info; each booking keeps its own copy (contact_* columns)
         $upd = $pdo->prepare(
             'UPDATE customers SET full_name=?, phone=?, facebook_name=? WHERE customer_id=?'
         );
@@ -183,8 +214,9 @@ try {
         'INSERT INTO bookings
             (reference_no, customer_id, service_type, event_date, start_time, end_time,
              event_location, notes, package_price, addons_total, grand_total,
-             amount_due_now, remaining_balance, payment_method, payment_status, proof_file_path, status)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+             amount_due_now, remaining_balance, payment_method, payment_status, proof_file_path, status,
+             contact_name, contact_phone, contact_facebook)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     );
     $insBooking->execute([
         $referenceNo,
@@ -204,6 +236,9 @@ try {
         'submitted',
         $proofPath,
         'pending',
+        $fullName,
+        $phone,
+        $facebook,
     ]);
     $bookingId = $pdo->lastInsertId();
 
@@ -256,9 +291,13 @@ try {
         'event_date'    => $eventDate,
     ]);
 } catch (Throwable $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) $pdo->rollBack();
     if ($proofPath && file_exists(__DIR__ . '/../../' . $proofPath)) {
-        unlink(__DIR__ . '/../../' . $proofPath); // clean up orphaned upload
+        unlink(__DIR__ . '/../../' . $proofPath); // never leave a receipt without a booking
     }
+    if ($e instanceof BookingRejected) {
+        fail($e->httpCode, $e->getMessage());
+    }
+    error_log('SnapVenture book.php error: ' . $e->getMessage());
     fail(500, 'We could not save your reservation. Please try again.');
 }

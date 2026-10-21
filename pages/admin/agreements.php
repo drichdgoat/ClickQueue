@@ -26,7 +26,7 @@ try {
     $where = [];
     $params = [];
     if ($q !== '') {
-        $where[] = '(a.agreement_ref LIKE ? OR b.reference_no LIKE ? OR c.full_name LIKE ? OR c.email LIKE ?)';
+        $where[] = '(a.agreement_ref LIKE ? OR b.reference_no LIKE ? OR COALESCE(b.contact_name, c.full_name) LIKE ? OR c.email LIKE ?)';
         $like = '%' . $q . '%';
         array_push($params, $like, $like, $like, $like);
     }
@@ -50,7 +50,7 @@ try {
     $page = min($page, $pages);
     $list = $pdo->prepare('SELECT a.agreement_id, a.agreement_ref, a.booking_id, a.revision, a.is_current, a.status, a.template_version,
                                   a.template_type, a.generated_at, a.sent_at, a.send_count,
-                                  b.reference_no, b.event_date, b.service_type, c.full_name, c.email,
+                                  b.reference_no, b.event_date, b.service_type, COALESCE(b.contact_name, c.full_name) AS full_name, c.email,
                                   cam.name AS camera_name, pb.name AS photobooth_name, t.title AS template_title '
                          . $from . ' ORDER BY a.generated_at DESC, a.agreement_id DESC LIMIT ' . $perPage . ' OFFSET ' . (($page - 1) * $perPage));
     $list->execute($params);
