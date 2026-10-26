@@ -1,0 +1,239 @@
+/* SnapVenture Admin - Bookings page UI (category cards, filters, scrollable table, status dropdown)
+   Load AFTER bookings.css, admin-sidebar.css and booking-review.css. */
+
+/* Keep the page from growing wider than the viewport; only the table scrolls */
+.admin-content {
+  min-width: 0;
+  max-width: 100%;
+}
+.admin-card {
+  min-width: 0;
+}
+
+/* ---------- category cards ---------- */
+.category-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+.category-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 14px 18px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--brown);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    color 0.2s;
+}
+.category-card:hover {
+  background: var(--cream);
+  border-color: #d6c8bd;
+}
+.category-card:focus-visible {
+  outline: 3px solid rgba(107, 82, 68, 0.35);
+  outline-offset: 2px;
+}
+.category-card .cc-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.category-card .cc-label {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.category-card .cc-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+.category-card .cc-count {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+.category-card.is-active {
+  background: var(--brown);
+  border-color: var(--brown);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(107, 82, 68, 0.22);
+}
+.category-card.is-active .cc-hint {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ---------- toolbar above the table ---------- */
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 18px;
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.filter-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.result-count {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- status dropdowns (row dropdown + status filter) ---------- */
+.status-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  height: 36px;
+  min-width: 138px;
+  padding: 0 34px 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--brown);
+  background-color: var(--white);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b5244' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background-color 0.2s;
+}
+.status-select:hover {
+  border-color: #cdbdb1;
+  background-color: var(--cream);
+}
+.status-select:focus {
+  outline: none;
+  border-color: var(--brown);
+  box-shadow: 0 0 0 3px rgba(107, 82, 68, 0.18);
+}
+.status-select option {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #3f332d;
+  background: #fff;
+}
+.status-filter {
+  height: 38px;
+  min-width: 168px;
+}
+.status-form {
+  margin: 0;
+}
+
+/* ---------- scrollable bookings table ---------- */
+.bookings-wrap {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.bookings-table {
+  width: 100%;
+  min-width: 1260px;
+}
+.bookings-table th {
+  background: var(--light);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bookings-table td {
+  vertical-align: middle;
+}
+.bookings-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.bookings-table tr[hidden] {
+  display: none !important;
+}
+.bookings-table small {
+  color: var(--muted);
+}
+.bookings-table .col-ref {
+  min-width: 140px;
+  white-space: nowrap;
+}
+.bookings-table .col-customer {
+  min-width: 210px;
+}
+.bookings-table .col-customer small {
+  overflow-wrap: anywhere;
+}
+.bookings-table .col-service {
+  min-width: 110px;
+  white-space: nowrap;
+}
+.bookings-table .col-package {
+  min-width: 150px;
+}
+.bookings-table .col-date {
+  min-width: 110px;
+  white-space: nowrap;
+}
+.bookings-table .col-money {
+  min-width: 100px;
+  white-space: nowrap;
+}
+.bookings-table .col-payment {
+  min-width: 120px;
+  white-space: nowrap;
+}
+.bookings-table .col-status {
+  min-width: 110px;
+  white-space: nowrap;
+}
+.bookings-table .col-update {
+  min-width: 170px;
+}
+.bookings-table .col-action {
+  min-width: 130px;
+  white-space: nowrap;
+}
+.bookings-table .view-btn {
+  white-space: nowrap;
+}
+.bookings-table .empty-row td {
+  text-align: center;
+  color: var(--muted);
+  padding: 28px 10px;
+  white-space: normal;
+}
+
+@media (max-width: 600px) {
+  .table-toolbar {
+    align-items: flex-start;
+  }
+  .filter-group {
+    width: 100%;
+  }
+  .status-filter {
+    flex: 1;
+  }
+}

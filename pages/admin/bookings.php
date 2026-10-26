@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['booking_id'], $_POST[
 
 /* ---------------- search ---------------- */
 $q = trim($_GET['q'] ?? '');
-$sql = "SELECT b.booking_id, b.reference_no, COALESCE(b.contact_name, c.full_name) AS full_name, c.email, b.service_type,
+$sql = "SELECT b.booking_id, b.reference_no, c.full_name, c.email, b.service_type,
                b.event_date, b.grand_total, b.amount_due_now, b.remaining_balance,
                b.payment_method, b.payment_status, b.status,
                cam.name AS camera_name, pb.name AS photobooth_name
@@ -31,7 +31,7 @@ $sql = "SELECT b.booking_id, b.reference_no, COALESCE(b.contact_name, c.full_nam
         LEFT JOIN photobooth_packages pb ON pb.photobooth_id = bpd.photobooth_id";
 $params = [];
 if ($q !== '') {
-    $sql .= " WHERE b.reference_no LIKE ? OR COALESCE(b.contact_name, c.full_name) LIKE ? OR c.email LIKE ?";
+    $sql .= " WHERE b.reference_no LIKE ? OR c.full_name LIKE ? OR c.email LIKE ?";
     $like = "%$q%";
     $params = [$like, $like, $like];
 }
@@ -42,6 +42,16 @@ $bookings = $stmt->fetchAll();
 
 function peso($n) { return '₱' . number_format((float) $n, 2); }
 function serviceLabel($t) { return $t === 'camera_rental' ? 'Camera Rental' : 'Photobooth'; }
+
+/* Display only: a completed booking is treated as fully paid, so it shows no outstanding balance.
+   The stored remaining_balance value is not changed. */
+function displayBalance(array $b) { return $b['status'] === 'completed' ? 0 : $b['remaining_balance']; }
+
+/* Card counts, taken from the bookings already loaded above (respects the search box) */
+$counts = ['all' => count($bookings), 'camera_rental' => 0, 'photobooth' => 0];
+foreach ($bookings as $row) {
+    $counts[$row['service_type'] === 'camera_rental' ? 'camera_rental' : 'photobooth']++;
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -52,6 +62,7 @@ function serviceLabel($t) { return $t === 'camera_rental' ? 'Camera Rental' : 'P
     <link rel="stylesheet" href="../../css/bookings.css" />
       <link rel="stylesheet" href="../../css/admin-sidebar.css" />
       <link rel="stylesheet" href="../../css/booking-review.css" />
+      <link rel="stylesheet" href="../../css/bookings-table.css" />
   </head>
   <body data-api="../../api/admin/" data-csrf="<?= htmlspecialchars(csrf_token()) ?>" data-open="<?= (int) ($_GET['open'] ?? 0) ?>">
     <div class="admin-shell">
@@ -65,7 +76,23 @@ function serviceLabel($t) { return $t === 'camera_rental' ? 'Camera Rental' : 'P
           <h1>Bookings Management</h1>
           <p>View and manage all customer bookings.</p>
         </div>
-        <div class="admin-card" style="margin-top: 25px">
+
+        <div class="category-cards" role="group" aria-label="Filter bookings by service">
+          <button type="button" class="category-card is-active" data-category="all" aria-pressed="true">
+            <span class="cc-text"><span class="cc-label">All Bookings</span><span class="cc-hint">Every service</span></span>
+            <span class="cc-count"><?= (int) $counts['all'] ?></span>
+          </button>
+          <button type="button" class="category-card" data-category="camera_rental" aria-pressed="false">
+            <span class="cc-text"><span class="cc-label">Camera Rental</span><span class="cc-hint">Rentals only</span></span>
+            <span class="cc-count"><?= (int) $counts['camera_rental'] ?></span>
+          </button>
+          <button type="button" class="category-card" data-category="photobooth" aria-pressed="false">
+            <span class="cc-text"><span class="cc-label">Photobooth Packages</span><span class="cc-hint">Photobooth only</span></span>
+            <span class="cc-count"><?= (int) $counts['photobooth'] ?></span>
+          </button>
+        </div>
+
+        <div class="admin-card" style="margin-top: 20px">
           <form class="action-row" method="get">
             <input
               class="btn btn-outline"
@@ -77,33 +104,49 @@ function serviceLabel($t) { return $t === 'camera_rental' ? 'Camera Rental' : 'P
             <?php if ($q !== ''): ?><a class="btn btn-outline" href="bookings.php">Clear</a><?php endif; ?>
           </form>
 
-          <div class="admin-table-wrap" style="margin-top: 15px">
-            <table>
-              <tr>
-                <th>Ref No.</th><th>Customer</th><th>Service</th><th>Package</th>
-                <th>Date</th><th>Total</th><th>Due Now</th><th>Balance</th>
-                <th>Payment</th><th>Status</th><th></th>
-              </tr>
+          <div class="table-toolbar">
+            <div class="filter-group">
+              <label for="statusFilter">Status</label>
+              <select id="statusFilter" class="status-select status-filter">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <span class="result-count" id="resultCount" aria-live="polite"></span>
+          </div>
+
+          <div class="admin-table-wrap bookings-wrap">
+            <table class="bookings-table">
+              <thead>
+                <tr>
+                  <th class="col-ref">Ref No.</th><th class="col-customer">Customer</th><th class="col-service">Service</th><th class="col-package">Package</th>
+                  <th class="col-date">Date</th><th class="col-money">Total</th><th class="col-money">Balance</th>
+                  <th class="col-payment">Payment</th><th class="col-status">Status</th><th class="col-update">Update Status</th><th class="col-action">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="bookingsBody">
               <?php if (!$bookings): ?>
-                <tr><td colspan="11" style="text-align:center;color:var(--muted);padding:24px">No bookings found.</td></tr>
+                <tr class="empty-row"><td colspan="11">No bookings found.</td></tr>
               <?php endif; ?>
               <?php foreach ($bookings as $b): ?>
-                <tr class="row-clickable" data-booking-id="<?= (int) $b['booking_id'] ?>">
-                  <td><?= htmlspecialchars($b['reference_no']) ?></td>
-                  <td><?= htmlspecialchars($b['full_name']) ?><br><small style="color:var(--muted)"><?= htmlspecialchars($b['email']) ?></small></td>
-                  <td><?= serviceLabel($b['service_type']) ?></td>
-                  <td><?= htmlspecialchars($b['camera_name'] ?? $b['photobooth_name'] ?? '—') ?></td>
-                  <td><?= htmlspecialchars($b['event_date']) ?></td>
-                  <td><?= peso($b['grand_total']) ?></td>
-                  <td><?= peso($b['amount_due_now']) ?></td>
-                  <td><?= peso($b['remaining_balance']) ?></td>
-                  <td><?= htmlspecialchars($b['payment_method']) ?><br><small style="color:var(--muted)"><?= htmlspecialchars($b['payment_status']) ?></small></td>
-                  <td class="status-cell"><span class="status <?= htmlspecialchars($b['status']) ?>"><?= htmlspecialchars($b['status']) ?></span></td>
-                  <td>
-                    <form method="post" style="display:flex;gap:4px">
+                <tr class="row-clickable" data-booking-id="<?= (int) $b['booking_id'] ?>" data-service="<?= $b['service_type'] === 'camera_rental' ? 'camera_rental' : 'photobooth' ?>" data-status="<?= htmlspecialchars($b['status']) ?>">
+                  <td class="col-ref"><?= htmlspecialchars($b['reference_no']) ?></td>
+                  <td class="col-customer"><?= htmlspecialchars($b['full_name']) ?><br><small style="color:var(--muted)"><?= htmlspecialchars($b['email']) ?></small></td>
+                  <td class="col-service"><?= serviceLabel($b['service_type']) ?></td>
+                  <td class="col-package"><?= htmlspecialchars($b['camera_name'] ?? $b['photobooth_name'] ?? '—') ?></td>
+                  <td class="col-date"><?= htmlspecialchars($b['event_date']) ?></td>
+                  <td class="col-money"><?= peso($b['grand_total']) ?></td>
+                  <td class="col-money"><?= peso(displayBalance($b)) ?></td>
+                  <td class="payment-cell col-payment"><?= htmlspecialchars($b['payment_method']) ?><br><small style="color:var(--muted)"><?= htmlspecialchars($b['payment_status']) ?></small></td>
+                  <td class="status-cell col-status"><span class="status <?= htmlspecialchars($b['status']) ?>"><?= htmlspecialchars($b['status']) ?></span></td>
+                  <td class="col-update">
+                    <form method="post" class="status-form">
                       <input type="hidden" name="booking_id" value="<?= $b['booking_id'] ?>">
                       <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
-                      <select name="new_status" class="field-select" style="height:34px;padding:0 6px;font-size:12px" data-current="<?= htmlspecialchars($b['status']) ?>"
+                      <select name="new_status" class="field-select status-select" aria-label="Update booking status" data-current="<?= htmlspecialchars($b['status']) ?>"
                         onchange="if (this.value === 'confirmed') { var c = this.dataset.current; this.value = c; if (window.svOpenBooking) svOpenBooking(this.form.booking_id.value, true); } else { this.form.submit(); }">
                         <option value="pending" <?= $b['status']==='pending'?'selected':'' ?>>Pending</option>
                         <option value="confirmed" <?= $b['status']==='confirmed'?'selected':'' ?>>Confirmed</option>
@@ -111,10 +154,14 @@ function serviceLabel($t) { return $t === 'camera_rental' ? 'Camera Rental' : 'P
                         <option value="cancelled" <?= $b['status']==='cancelled'?'selected':'' ?>>Cancelled</option>
                       </select>
                     </form>
-                    <button type="button" class="btn btn-outline btn-sm" style="margin-top:6px" data-view-booking="<?= (int) $b['booking_id'] ?>">View Details</button>
+                  </td>
+                  <td class="col-action">
+                    <button type="button" class="btn btn-outline btn-sm view-btn" data-view-booking="<?= (int) $b['booking_id'] ?>">View Details</button>
                   </td>
                 </tr>
               <?php endforeach; ?>
+                <tr class="empty-row" id="noMatchRow" hidden><td colspan="11">No bookings match the selected filters.</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -125,5 +172,6 @@ function serviceLabel($t) { return $t === 'camera_rental' ? 'Camera Rental' : 'P
     <script src="../../js/admin-common.js"></script>
     <script src="../../js/agreement-modal.js"></script>
     <script src="../../js/booking-details.js"></script>
+    <script src="../../js/bookings.js"></script>
   </body>
 </html>

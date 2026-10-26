@@ -12,6 +12,7 @@
     />
     <link rel="stylesheet" href="../css/booking.css" />
     <link rel="stylesheet" href="../css/booking-form.css" />
+    <link rel="stylesheet" href="../css/booking-modal.css" />
   </head>
   <body>
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
@@ -202,9 +203,11 @@
           </aside>
         </div>
 
-        <!-- shown after successful submission -->
-        <section class="bk-card bk-success" id="bkSuccess" hidden>
-          <h2>Reservation Submitted</h2>
+        <!-- shown as a centered popup after successful submission -->
+        <div class="bk-modal-overlay" id="bkSuccessOverlay" hidden>
+        <section class="bk-card bk-success" id="bkSuccess" role="dialog" aria-modal="true" aria-labelledby="bkSuccessTitle" hidden>
+          <button type="button" class="bk-modal-close" id="bkSuccessClose" aria-label="Close">&#10005;</button>
+          <h2 id="bkSuccessTitle">Reservation Submitted</h2>
           <p>Reference No. <b id="okRef"></b></p>
           <div id="okRows"></div>
           <div class="bk-notice">
@@ -222,6 +225,7 @@
             <a class="bk-pay alt" href="../index.php">Back to Home</a>
           </div>
         </section>
+        </div>
       </div>
     </main>
 

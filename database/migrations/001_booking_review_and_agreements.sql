@@ -1,4 +1,3 @@
-
 ALTER TABLE `bookings`
   ADD COLUMN IF NOT EXISTS `payment_reviewed_by` int(11) DEFAULT NULL AFTER `confirmed_at`,
   ADD COLUMN IF NOT EXISTS `payment_reviewed_at` datetime DEFAULT NULL AFTER `payment_reviewed_by`,

@@ -76,6 +76,7 @@
     vm = now.getMonth();
   var paymentMethod = null;
   var proofFile = null;
+  var bookingSubmitted = false; // set after a successful submission so the form can't be sent twice
 
   var METHODS = [
     {
@@ -776,7 +777,7 @@
       /* no-op placeholder */
     }
 
-    $("proceedBtn").disabled = !(s6 && lastSummary);
+    $("proceedBtn").disabled = bookingSubmitted || !(s6 && lastSummary);
     $("submitError").hidden = true;
   }
 
@@ -861,10 +862,27 @@
       row("calendar", "Date", data.event_date) +
       row("doc", "Amount Paid Now", peso(data.summary.amount_due_now)) +
       row("doc", "Remaining Balance", peso(data.summary.remaining_balance));
-    $("bkLayout").hidden = true;
+    // Show the summary as a centered popup; the booking page stays visible (dimmed) behind it
+    bookingSubmitted = true;
+    $("proceedBtn").disabled = true;
+    $("confirmHint").textContent = "Reservation submitted.";
     $("bkSuccess").hidden = false;
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    $("bkSuccessOverlay").hidden = false;
+    document.body.classList.add("bk-modal-open");
+    $("bkSuccessClose").focus();
   }
+
+  function closeSuccess() {
+    $("bkSuccessOverlay").hidden = true;
+    document.body.classList.remove("bk-modal-open");
+  }
+  $("bkSuccessClose").addEventListener("click", closeSuccess);
+  $("bkSuccessOverlay").addEventListener("mousedown", function (e) {
+    if (e.target === this) closeSuccess();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !$("bkSuccessOverlay").hidden) closeSuccess();
+  });
 
   /* =========================================================
      BOOT

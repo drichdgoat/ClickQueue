@@ -1,6 +1,5 @@
 /* SnapVenture Admin - booking details / review view (Bookings Management page).
    Read-only until the admin clicks an explicit action:
-   - "Mark payment as verified" records the admin's manual review (separate from booking status)
    - "Confirm Booking" requires both acknowledgments, then the server creates the agreement (never emails it) */
 (function () {
   "use strict";
@@ -15,6 +14,10 @@
   var cur = null; // currently loaded booking payload
   var activeTab = "info";
 
+  // Same rule as the Bookings table: a completed booking has no outstanding balance
+  function balanceOf(b) {
+    return b.status === "completed" ? 0 : b.amounts.remaining_balance;
+  }
   function statusBadge(s) {
     return '<span class="status ' + esc(s) + '">' + esc(s) + "</span>";
   }
@@ -134,7 +137,7 @@
         esc(SV.money(a.amount_due_now)) +
         "</td></tr>" +
         "<tr><td>Remaining balance</td><td>" +
-        esc(SV.money(a.remaining_balance)) +
+        esc(SV.money(balanceOf(b))) +
         "</td></tr></table>",
     );
 
@@ -161,35 +164,20 @@
     var r = b.payment.receipt;
     var params = { booking_id: b.booking_id, type: "payment_proof" };
     var openUrl = SV.url("booking-file.php", params);
-    var dlUrl = SV.url("booking-file.php", {
-      booking_id: b.booking_id,
-      type: "payment_proof",
-      download: 1,
-    });
     if (!r.exists) {
       if (r.recorded)
         return notice(
           "bad",
           "A receipt is recorded for this booking but the file could not be found on the server.",
         );
-      return (
-        '<div class="viewer"><div class="viewer-empty">No proof of payment uploaded yet.</div></div>' +
-        (b.payment.proof_required
-          ? ""
-          : notice(
-              "",
-              "This booking uses <b>" +
-                esc(b.payment.method) +
-                "</b>, which does not require a receipt upload.",
-            ))
-      );
+      return '<div class="viewer"><div class="viewer-empty">No proof of payment uploaded yet.</div></div>';
     }
     var viewer;
     if (r.kind === "image") {
       viewer =
         '<img src="' +
         esc(openUrl) +
-        '" alt="Proof of payment" onerror="this.parentNode.innerHTML=\'<div class=viewer-empty>The preview failed to load. Use Open or Download.</div>\'">';
+        '" alt="Proof of payment" onerror="this.parentNode.innerHTML=\'<div class=viewer-empty>The preview failed to load.</div>\'">';
     } else if (r.kind === "pdf") {
       viewer =
         '<iframe title="Proof of payment (PDF)" src="' +
@@ -205,10 +193,7 @@
       "</div>" +
       '<div class="viewer-actions"><a class="btn btn-outline btn-sm" target="_blank" rel="noopener" href="' +
       esc(openUrl) +
-      '">Open in new tab</a>' +
-      '<a class="btn btn-outline btn-sm" href="' +
-      esc(dlUrl) +
-      '">Download</a></div>' +
+      '">Open in new tab</a></div>' +
       '<div class="small muted">File: ' +
       esc(r.filename) +
       (r.size ? " · " + esc(SV.bytes(r.size)) : "") +
@@ -234,7 +219,7 @@
         '<span class="pill ' + cls + '">' + esc(p.status_label) + "</span>",
       ) +
       item("Required down payment", esc(SV.money(a.amount_due_now))) +
-      item("Remaining balance", esc(SV.money(a.remaining_balance))) +
+      item("Remaining balance", esc(SV.money(balanceOf(b)))) +
       item("Total", esc(SV.money(a.grand_total))) +
       item(
         "Receipt submitted",
@@ -242,34 +227,8 @@
           ' <span class="small muted">(with the booking)</span>',
       ) +
       "</div>";
-    if (p.status === "verified") {
-      h += notice(
-        "ok",
-        "Marked as verified by <b>" +
-          esc(p.reviewed_by || "an administrator") +
-          "</b>" +
-          (p.reviewed_at ? " on " + esc(SV.datetime(p.reviewed_at)) : "") +
-          " after manual review.",
-      );
-    }
     h += receiptHtml(b);
-    h += notice(
-      "",
-      "Inspect the receipt, then record your decision. <b>Marking a payment as verified only records your manual review</b> — " +
-        "the system does not check it with any bank or e-wallet, and confirming the booking does not change the payment status.",
-    );
-    h +=
-      p.status === "verified"
-        ? '<button type="button" class="btn btn-outline btn-sm" data-action="pay-undo">Undo verification</button>'
-        : '<button type="button" class="btn btn-primary btn-sm" data-action="pay-verify">Mark payment as verified (manual review)</button>';
     $("tab-payment").innerHTML = h;
-  }
-
-  /* ---------------- Proof of Requirements ---------------- */
-  function renderReq(b) {
-    $("tab-req").innerHTML =
-      notice("", esc(b.requirements.note)) +
-      '<div class="viewer"><div class="viewer-empty">No requirement documents are collected for bookings.</div></div>';
   }
 
   /* ---------------- Agreement tab ---------------- */
@@ -311,11 +270,6 @@
         );
       h +=
         '<button type="button" class="btn btn-primary btn-sm" data-action="agr-generate">Generate agreement</button>';
-    } else {
-      h += notice(
-        "",
-        "The agreement is created when you confirm this booking. Opening a booking never generates or sends one.",
-      );
     }
     $("tab-agreement").innerHTML = h;
   }
@@ -324,13 +278,7 @@
   function renderConfirm(b) {
     var box = $("bkConfirmBox");
     if (b.status !== "pending") {
-      box.innerHTML =
-        b.status === "cancelled"
-          ? notice(
-              "",
-              "This booking is cancelled. Set it back to Pending in the status dropdown first if you want to confirm it.",
-            )
-          : "";
+      box.innerHTML = "";
       return;
     }
     var blockers = [];
@@ -350,12 +298,6 @@
     blockers.forEach(function (t) {
       h += notice("bad", t);
     });
-    if (b.payment.status !== "verified") {
-      h += notice(
-        "warn",
-        "Payment is not marked as verified. You can still confirm — payment review is a separate step in the Proof of Payment tab.",
-      );
-    }
     h +=
       '<label class="check"><input type="checkbox" id="ackDetails"> I have reviewed the booking details and the date/availability.</label>' +
       '<label class="check"><input type="checkbox" id="ackReceipt"> I have reviewed the payment ' +
@@ -364,7 +306,7 @@
       '<div class="modal-actions" style="margin-top:12px"><button type="button" class="btn btn-primary" id="bkConfirmBtn" data-blocked="' +
       (blockers.length ? 1 : 0) +
       '" disabled>Confirm Booking</button></div>' +
-      '<div class="small muted">Confirming creates the agreement PDF for you to review. Nothing is emailed until you click Send Agreement.</div></div>';
+      "</div>";
     box.innerHTML = h;
   }
 
@@ -393,7 +335,6 @@
     $("bkSub").innerHTML = esc(b.customer.name) + " · " + statusBadge(b.status);
     renderInfo(b);
     renderPayment(b);
-    renderReq(b);
     renderAgreement(b);
     renderConfirm(b);
     renderReject(b);
@@ -404,7 +345,7 @@
     opts = opts || {};
     $("bkLoading").hidden = false;
     $("bkError").hidden = true;
-    ["info", "payment", "req", "agreement"].forEach(function (t) {
+    ["info", "payment", "agreement"].forEach(function (t) {
       $("tab-" + t).innerHTML = "";
     });
     $("bkConfirmBox").innerHTML = "";
@@ -440,10 +381,6 @@
         sel.dataset.current = patch.status;
       }
     }
-    if (patch.payment_status) {
-      var small = tr.cells[8] && tr.cells[8].querySelector("small");
-      if (small) small.textContent = patch.payment_status;
-    }
   }
 
   /* ---------------- actions ---------------- */
@@ -457,27 +394,7 @@
     if (!btn || !cur) return;
     var action = btn.dataset.action;
 
-    if (action === "pay-verify" || action === "pay-undo") {
-      btn.disabled = true;
-      SV.post("booking-payment-review.php", {
-        booking_id: cur.booking_id,
-        decision: action === "pay-verify" ? "verified" : "submitted",
-      })
-        .then(function (r) {
-          SV.toast(
-            action === "pay-verify"
-              ? "Payment marked as verified (manual review recorded)."
-              : "Verification removed.",
-            "ok",
-          );
-          updateRow(cur.booking_id, { payment_status: r.payment_status });
-          load(cur.booking_id, { keepTab: true });
-        })
-        .catch(function (err) {
-          SV.toast(err.message, "bad");
-          btn.disabled = false;
-        });
-    } else if (action === "agr-open") {
+    if (action === "agr-open") {
       SV.agreement.open({ bookingId: cur.booking_id });
     } else if (action === "agr-generate") {
       btn.disabled = true;
