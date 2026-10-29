@@ -55,10 +55,19 @@ function br_equipment_lines(array $b): array {
     return $lines;
 }
 
+/** Snap Lite / Snap Plus bookings that run past midnight: the end time is earlier than the start time. */
+function br_runs_overnight(array $b): bool {
+    if (($b['service_type'] ?? '') !== 'photobooth') return false;
+    if (empty($b['start_time']) || empty($b['end_time'])) return false;
+    $s = strtotime($b['start_time']);
+    $e = strtotime($b['end_time']);
+    return $s !== false && $e !== false && $e < $s;
+}
+
 function br_event_time(array $b): string {
     $s = br_fmt_time($b['start_time'] ?? null);
     $e = br_fmt_time($b['end_time'] ?? null);
-    if ($s && $e) return $s . ' – ' . $e;
+    if ($s && $e) return $s . ' – ' . $e . (br_runs_overnight($b) ? ' (next day)' : '');
     return $s ?: ($e ?: '');
 }
 
@@ -72,6 +81,7 @@ function br_rental_duration(array $b): string {
     if (!empty($b['start_time']) && !empty($b['end_time'])) {
         $s = strtotime($b['start_time']);
         $e = strtotime($b['end_time']);
+        if ($s !== false && $e !== false && br_runs_overnight($b)) $e += 86400; // ends the next day
         if ($s !== false && $e !== false && $e > $s) {
             $mins = (int) round(($e - $s) / 60);
             $h = intdiv($mins, 60);
