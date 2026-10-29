@@ -27,6 +27,35 @@ function fail(int $code, string $message): void {
     exit;
 }
 
+class BookingRejected extends RuntimeException {
+    public int $httpCode;
+
+    public function __construct(int $httpCode, string $message) {
+        parent::__construct($message);
+        $this->httpCode = $httpCode;
+    }
+}
+
+function save_proof(string $tmp, string $ext): string {
+    $uploadDir = __DIR__ . '/../../uploads/proofs/';
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+        error_log('SnapVenture: could not create upload dir ' . $uploadDir);
+        throw new BookingRejected(500, 'Server could not create the uploads folder. Please ask the site admin to create "uploads/proofs" and give it write permission (755).');
+    }
+    if (!is_writable($uploadDir)) {
+        error_log('SnapVenture: upload dir not writable: ' . $uploadDir);
+        throw new BookingRejected(500, 'Server cannot write to the uploads folder. Please ask the site admin to set "uploads/proofs" permission to 755.');
+    }
+
+    $filename = 'proof_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    if (!move_uploaded_file($tmp, $uploadDir . $filename)) {
+        $lastErr = error_get_last();
+        error_log('SnapVenture: move_uploaded_file failed: ' . ($lastErr['message'] ?? 'unknown error'));
+        throw new BookingRejected(500, 'Could not save the uploaded file. Please try again, or ask the site admin to check folder permissions on "uploads/proofs".');
+    }
+    return 'uploads/proofs/' . $filename;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     fail(405, 'Method not allowed.');
 }
@@ -86,6 +115,8 @@ $needsProof = $paymentMethod !== 'Over-the-Counter';
 
 /* ---------------- proof of payment upload ---------------- */
 $proofPath = null;
+$proofTmp = null;
+$proofExt = null;
 if (isset($_FILES['proof_file']) && $_FILES['proof_file']['error'] !== UPLOAD_ERR_NO_FILE) {
     $file = $_FILES['proof_file'];
     if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -102,25 +133,8 @@ if (isset($_FILES['proof_file']) && $_FILES['proof_file']['error'] !== UPLOAD_ER
         fail(422, 'Proof of payment must be a PNG, JPG, or PDF file.');
     }
 
-    $uploadDir = __DIR__ . '/../../uploads/proofs/';
-    if (!is_dir($uploadDir)) {
-        if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
-            error_log('SnapVenture: could not create upload dir ' . $uploadDir);
-            fail(500, 'Server could not create the uploads folder. Please ask the site admin to create "uploads/proofs" and give it write permission (755).');
-        }
-    }
-    if (!is_writable($uploadDir)) {
-        error_log('SnapVenture: upload dir not writable: ' . $uploadDir);
-        fail(500, 'Server cannot write to the uploads folder. Please ask the site admin to set "uploads/proofs" permission to 755.');
-    }
-
-    $filename = 'proof_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $allowed[$mime];
-    if (!move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
-        $lastErr = error_get_last();
-        error_log('SnapVenture: move_uploaded_file failed: ' . ($lastErr['message'] ?? 'unknown error'));
-        fail(500, 'Could not save the uploaded file. Please try again, or ask the site admin to check folder permissions on "uploads/proofs".');
-    }
-    $proofPath = 'uploads/proofs/' . $filename;
+    $proofTmp = $file['tmp_name'];
+    $proofExt = $allowed[$mime];
 } elseif ($needsProof) {
     fail(422, 'Please upload your proof of payment for this payment method.');
 }
@@ -324,10 +338,21 @@ try {
         'email'         => $email,
         'event_date'    => $eventDate,
     ]);
+} catch (BookingRejected $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    if ($proofPath && file_exists(__DIR__ . '/../../' . $proofPath)) {
+        unlink(__DIR__ . '/../../' . $proofPath);
+    }
+    fail($e->httpCode, $e->getMessage());
 } catch (Throwable $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     if ($proofPath && file_exists(__DIR__ . '/../../' . $proofPath)) {
         unlink(__DIR__ . '/../../' . $proofPath); // clean up orphaned upload
     }
+    error_log('SnapVenture booking failed: ' . $e->getMessage());
     fail(500, 'We could not save your reservation. Please try again.');
 }

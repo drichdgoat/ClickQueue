@@ -658,8 +658,10 @@
      LIVE PRICE SUMMARY (authoritative -- from api/calculate.php)
      ========================================================= */
   var calcTimer = null;
+  var calcRequestId = 0;
   function requestCalculation() {
     clearTimeout(calcTimer);
+    var requestId = ++calcRequestId;
     calcTimer = setTimeout(function () {
       if (!selectedPkg || !detailsComplete()) {
         lastSummary = null;
@@ -688,12 +690,14 @@
           return r.json();
         })
         .then(function (data) {
+          if (requestId !== calcRequestId) return;
           lastSummary = data.success ? data.summary : null;
-          renderSummary();
+          refresh(true);
         })
         .catch(function () {
+          if (requestId !== calcRequestId) return;
           lastSummary = null;
-          renderSummary();
+          refresh(true);
         });
     }, 250);
   }
@@ -902,17 +906,19 @@
     );
   }
 
-  function refresh() {
-    function refresh() {
+  function refresh(skipCalculation) {
     updateTimeLabels();
-    syncAutoEnd();
     syncAutoEnd();
     var s1 = infoOk();
     var s2 = s1 && !!serviceType && !!selectedPkg;
     var s3 = s2 && detailsComplete();
-    if (s3) requestCalculation();
+    if (s3 && !skipCalculation) requestCalculation();
     else {
-      lastSummary = null;
+      if (!s3) {
+        clearTimeout(calcTimer);
+        calcRequestId++;
+        lastSummary = null;
+      }
       renderSummary();
     }
 
