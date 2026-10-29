@@ -10,7 +10,7 @@
  *  -- camera_rental --
  *  camera_id, days, extra_hours, photo_qty, accessory_ids[] (repeatable)
  *  -- photobooth --
- *  photobooth_id, addon_ids[] (repeatable)
+ *  photobooth_id, addon_qty[addon_id] = quantity
  *  -- common --
  *  event_date, start_time, end_time, event_location, notes
  *  payment_method, agree_terms ("1")
@@ -25,6 +25,42 @@ function fail(int $code, string $message): void {
     http_response_code($code);
     echo json_encode(['success' => false, 'error' => $message]);
     exit;
+}
+
+/* Guarded so these don't clash if pricing.php already defines them. */
+if (!class_exists('BookingRejected')) {
+    class BookingRejected extends RuntimeException {
+        public int $status;
+        public function __construct(int $status, string $message) {
+            parent::__construct($message);
+            $this->status = $status;
+        }
+    }
+}
+
+if (!function_exists('save_proof')) {
+    /** Moves the validated upload into uploads/proofs and returns its site-relative path. */
+    function save_proof(string $tmp, string $ext): string {
+        $uploadDir = __DIR__ . '/../../uploads/proofs/';
+        if (!is_dir($uploadDir)) {
+            if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                error_log('SnapVenture: could not create upload dir ' . $uploadDir);
+                throw new BookingRejected(500, 'Server could not create the uploads folder. Please ask the site admin to create "uploads/proofs" and give it write permission (755).');
+            }
+        }
+        if (!is_writable($uploadDir)) {
+            error_log('SnapVenture: upload dir not writable: ' . $uploadDir);
+            throw new BookingRejected(500, 'Server cannot write to the uploads folder. Please ask the site admin to set "uploads/proofs" permission to 755.');
+        }
+
+        $filename = 'proof_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        if (!move_uploaded_file($tmp, $uploadDir . $filename)) {
+            $lastErr = error_get_last();
+            error_log('SnapVenture: move_uploaded_file failed: ' . ($lastErr['message'] ?? 'unknown error'));
+            throw new BookingRejected(500, 'Could not save the uploaded file. Please try again, or ask the site admin to check folder permissions on "uploads/proofs".');
+        }
+        return 'uploads/proofs/' . $filename;
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -84,8 +120,12 @@ if (!$agreeTerms) {
 }
 $needsProof = $paymentMethod !== 'Over-the-Counter';
 
-/* ---------------- proof of payment upload ---------------- */
+/* ---------------- proof of payment upload ----------------
+   Only validated here. The file is moved to disk later (save_proof) once every
+   booking check has passed, so a rejected booking never leaves a stray receipt. */
 $proofPath = null;
+$proofTmp  = null;
+$proofExt  = null;
 if (isset($_FILES['proof_file']) && $_FILES['proof_file']['error'] !== UPLOAD_ERR_NO_FILE) {
     $file = $_FILES['proof_file'];
     if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -101,31 +141,15 @@ if (isset($_FILES['proof_file']) && $_FILES['proof_file']['error'] !== UPLOAD_ER
     if (!isset($allowed[$mime])) {
         fail(422, 'Proof of payment must be a PNG, JPG, or PDF file.');
     }
-
-    $uploadDir = __DIR__ . '/../../uploads/proofs/';
-    if (!is_dir($uploadDir)) {
-        if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
-            error_log('SnapVenture: could not create upload dir ' . $uploadDir);
-            fail(500, 'Server could not create the uploads folder. Please ask the site admin to create "uploads/proofs" and give it write permission (755).');
-        }
-    }
-    if (!is_writable($uploadDir)) {
-        error_log('SnapVenture: upload dir not writable: ' . $uploadDir);
-        fail(500, 'Server cannot write to the uploads folder. Please ask the site admin to set "uploads/proofs" permission to 755.');
-    }
-
-    $filename = 'proof_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $allowed[$mime];
-    if (!move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
-        $lastErr = error_get_last();
-        error_log('SnapVenture: move_uploaded_file failed: ' . ($lastErr['message'] ?? 'unknown error'));
-        fail(500, 'Could not save the uploaded file. Please try again, or ask the site admin to check folder permissions on "uploads/proofs".');
-    }
-    $proofPath = 'uploads/proofs/' . $filename;
+    $proofTmp = $file['tmp_name'];
+    $proofExt = $allowed[$mime];
 } elseif ($needsProof) {
     fail(422, 'Please upload your proof of payment for this payment method.');
 }
 
 /* ---------------- authoritative price calculation ---------------- */
+$autoEnd = false; // true when the server calculates the end time (Snap Lite / Snap Plus)
+
 try {
     if ($serviceType === 'camera_rental') {
         $cameraId = (int) ($_POST['camera_id'] ?? 0);
@@ -135,14 +159,15 @@ try {
         $extraHours = isset($_POST['extra_hours']) && $_POST['extra_hours'] !== '' ? (int) $_POST['extra_hours'] : null;
         $photoQty = isset($_POST['photo_qty']) && $_POST['photo_qty'] !== '' ? (int) $_POST['photo_qty'] : null;
         $accessoryIds = array_map('intval', $_POST['accessory_ids'] ?? []);
+        $rentalDays = max(1, (int) ($days ?? 1));
 
-        if (isDateTaken($pdo, 'camera_rental', $cameraId, $eventDate)) {
-            fail(409, 'Sorry, that camera is already booked on this date. Please choose another date.');
+        // quick pre-check; the authoritative check runs again under a row lock below
+        if (isDateTaken($pdo, 'camera_rental', $cameraId, $eventDate, $rentalDays)) {
+            fail(409, 'Sorry, that camera is already booked during part of those rental dates. Please choose another date range.');
         }
 
         $summary = buildCameraBookingSummary($pdo, $cameraId, $days, $extraHours, $photoQty, $accessoryIds);
         $packageId = $cameraId;
-        $rentalDays = max(1, (int) ($days ?? 1));
 
     } else {
         $photoboothId = (int) ($_POST['photobooth_id'] ?? 0);
@@ -158,6 +183,7 @@ try {
         $pkgName = (string) $pkgNameStmt->fetchColumn();
         $isLuxe  = (bool) preg_match('/luxe/i', $pkgName);
         $isTimed = !$isLuxe && (bool) preg_match('/\b(lite|plus)\b/i', $pkgName);
+        $autoEnd = $isTimed;
 
         if ($isLuxe || $isTimed) {
             if (!$startTime || !preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $startTime)) {
@@ -196,7 +222,14 @@ try {
     fail(422, $e->getMessage());
 }
 
-if ($rentalDays === 1 && $startTime !== null && $startTime !== '' && $endTime !== null && $endTime !== '' && $endTime <= $startTime) {
+// A one-day booking must end after it starts, except Snap Lite / Plus where the
+// server-calculated end time may legitimately fall after midnight.
+if (
+    $rentalDays === 1 && !$autoEnd
+    && $startTime !== null && $startTime !== ''
+    && $endTime !== null && $endTime !== ''
+    && $endTime <= $startTime
+) {
     fail(422, 'For a one-day booking, end time must be later than start time.');
 }
 
@@ -324,10 +357,17 @@ try {
         'email'         => $email,
         'event_date'    => $eventDate,
     ]);
-} catch (Throwable $e) {
-    $pdo->rollBack();
+} catch (BookingRejected $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
     if ($proofPath && file_exists(__DIR__ . '/../../' . $proofPath)) {
         unlink(__DIR__ . '/../../' . $proofPath); // clean up orphaned upload
     }
+    fail($e->status, $e->getMessage());
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    if ($proofPath && file_exists(__DIR__ . '/../../' . $proofPath)) {
+        unlink(__DIR__ . '/../../' . $proofPath); // clean up orphaned upload
+    }
+    error_log('SnapVenture book.php: ' . $e->getMessage());
     fail(500, 'We could not save your reservation. Please try again.');
 }

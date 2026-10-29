@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../css/booking.css" />
     <link rel="stylesheet" href="../css/booking-form.css" />
     <link rel="stylesheet" href="../css/booking-modal.css" />
+    <link rel="stylesheet" href="../css/booking-time.css" />
   </head>
   <body>
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
@@ -146,6 +147,7 @@
                   <div class="bk-field">
                     <label id="endTimeLabel" for="endTime">End Time</label>
                     <div class="bk-input"><svg class="ic"><use href="#i-clock"/></svg><input id="endTime" type="time" /></div>
+                    <small class="bk-auto-note" id="endAutoNote" hidden>Calculated automatically: 3 hours + any additional hours.</small>
                   </div>
                 </div>
                 <p class="bk-error" id="timeError" hidden>For a one-day booking, end time must be later than start time.</p>

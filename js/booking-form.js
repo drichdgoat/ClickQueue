@@ -721,7 +721,7 @@
         serviceType === "camera_rental" ? "Camera Rental" : "Photobooth",
       );
     if (selectedPkg) h += row("camera", "Package", selectedPkg.name);
-    if (picked) {
+        if (picked) {
       var duration = rentalDurationDays();
       var lastDate = dateAfterDays(picked, duration);
       h += row(
@@ -903,7 +903,9 @@
   }
 
   function refresh() {
+    function refresh() {
     updateTimeLabels();
+    syncAutoEnd();
     syncAutoEnd();
     var s1 = infoOk();
     var s2 = s1 && !!serviceType && !!selectedPkg;
