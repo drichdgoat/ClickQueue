@@ -81,6 +81,8 @@
     vm = now.getMonth();
   var paymentMethod = null;
   var proofFile = null;
+  var TIMED_BASE_HOURS = 3; // Snap Lite / Snap Plus base service duration
+  var autoEndOn = false; // End Time is currently auto-calculated (read-only)
   var bookingSubmitted = false; // set after a successful submission so the form can't be sent twice
 
   var METHODS = [
@@ -206,6 +208,7 @@
     selectedPkg = null;
     accessoryIds = [];
     addonIds = [];
+    addonQty = {};
     picked = "";
     renderPackageGrid();
     renderDetails();
@@ -219,11 +222,13 @@
     var id = parseInt(card.getAttribute("data-id"), 10);
     var items =
       serviceType === "camera_rental" ? catalog.cameras : catalog.photobooth;
+    var prevPkg = selectedPkg;
     selectedPkg = items.find(function (i) {
       return (
         (serviceType === "camera_rental" ? i.camera_id : i.photobooth_id) === id
       );
     });
+    if (prevPkg !== selectedPkg) addonQty = {}; // add-ons belong to one package only
     accessoryIds = [];
     addonIds = [];
     picked = "";
@@ -330,7 +335,9 @@
       body.innerHTML = html;
       bindDetailInputs();
     } else {
-      var addons = catalog.photobooth_addons || [];
+      var addons = (catalog.photobooth_addons || []).filter(function (a) {
+        return !(isLuxe() && isHoursAddon(a)); // Snap Luxe has no Additional Hours
+      });
       var html2 = '<p class="addon-hint">Optional add-ons for your event:</p>';
       addons.forEach(function (a) {
         var info = addonInfo(a.name);
@@ -385,6 +392,84 @@
     }
     // photobooth add-ons don't affect availability, so the chosen date stays
     refresh();
+  }
+
+  /* ---- photobooth time rules ----
+     Snap Lite / Snap Plus: End Time = Start Time + 3 hours + Additional Hours (read-only).
+     Snap Luxe and everything else: unchanged (both times are entered by the customer). */
+  function isLuxe() {
+    return (
+      serviceType === "photobooth" &&
+      !!selectedPkg &&
+      /luxe/i.test(selectedPkg.name)
+    );
+  }
+  function isTimedPhotobooth() {
+    return (
+      serviceType === "photobooth" &&
+      !!selectedPkg &&
+      !isLuxe() &&
+      /\b(lite|plus)\b/i.test(selectedPkg.name)
+    );
+  }
+  function isHoursAddon(a) {
+    return /hour/i.test(a.name);
+  }
+  function extraHoursChosen() {
+    var hrs = 0;
+    (catalog.photobooth_addons || []).forEach(function (a) {
+      if (isHoursAddon(a))
+        hrs += (addonQty[a.addon_id] || 0) * addonInfo(a.name).size;
+    });
+    return hrs;
+  }
+  function pad2(n) {
+    return (n < 10 ? "0" : "") + n;
+  }
+  function fmtTime(hhmm) {
+    var p = hhmm.split(":"),
+      h = +p[0];
+    return (h % 12 || 12) + ":" + p[1] + (h < 12 ? " AM" : " PM");
+  }
+  // Snap Lite / Plus / Luxe all need a Start Time
+  function needsStart() {
+    return isLuxe() || isTimedPhotobooth();
+  }
+  function syncAutoEnd() {
+    var endEl = $("endTime"),
+      field = endEl.closest(".bk-field"),
+      note = $("endAutoNote"),
+      startEl = $("startTime");
+    startEl.required = needsStart();
+    document
+      .querySelector('label[for="startTime"]')
+      .classList.toggle("is-required", needsStart());
+
+    // Snap Luxe is a whole-duration package: no End Time field at all
+    field.hidden = isLuxe();
+
+    if (!isTimedPhotobooth()) {
+      if (autoEndOn || isLuxe()) endEl.value = ""; // never keep a stale or hidden end time
+      endEl.readOnly = false;
+      endEl.classList.remove("is-auto");
+      note.hidden = true;
+      autoEndOn = false;
+      return;
+    }
+    autoEndOn = true;
+    endEl.readOnly = true;
+    endEl.classList.add("is-auto");
+    note.hidden = false;
+    var st = startEl.value;
+    if (!st) {
+      endEl.value = "";
+      return;
+    }
+    var p = st.split(":");
+    var mins =
+      (+p[0] * 60 + +p[1] + (TIMED_BASE_HOURS + extraHoursChosen()) * 60) %
+      1440;
+    endEl.value = pad2(Math.floor(mins / 60)) + ":" + pad2(mins % 60);
   }
 
   function addonInfo(name) {
@@ -644,17 +729,30 @@
         duration > 1 ? "Rental Dates" : "Event Date",
         duration > 1 ? formatDate(picked) + " – " + formatDate(lastDate) : formatDate(picked),
       );
-      var startTime = $("startTime").value;
-      var endTime = $("endTime").value;
-      if (startTime || endTime) {
-        var timeLabel = duration > 1
-          ? (startTime ? startTime + " (" + formatDate(picked) + ")" : "") +
-            (startTime && endTime ? " – " : "") +
-            (endTime ? endTime + " (" + formatDate(lastDate) + ")" : "")
-          : [startTime, endTime].filter(Boolean).join(" – ");
-        h += row("clock", "Time", timeLabel);
+      if (serviceType === "camera_rental") {
+        var startTime = $("startTime").value;
+        var endTime = $("endTime").value;
+        if (startTime || endTime) {
+          var timeLabel = duration > 1
+            ? (startTime ? startTime + " (" + formatDate(picked) + ")" : "") +
+              (startTime && endTime ? " – " : "") +
+              (endTime ? endTime + " (" + formatDate(lastDate) + ")" : "")
+            : [startTime, endTime].filter(Boolean).join(" – ");
+          h += row("clock", "Time", timeLabel);
+        }
       }
     }
+    // photobooth: Snap Luxe shows the start time only, Lite/Plus show the range
+    if (isLuxe() && $("startTime").value)
+      h += row("clock", "Start Time", fmtTime($("startTime").value));
+    if (isTimedPhotobooth() && $("startTime").value && $("endTime").value)
+      h += row(
+        "clock",
+        "Time",
+        fmtTime($("startTime").value) +
+          " \u2013 " +
+          fmtTime($("endTime").value),
+      );
     $("sumRows").innerHTML = h;
     $("sumEmpty").hidden = !!h;
 
@@ -806,6 +904,7 @@
 
   function refresh() {
     updateTimeLabels();
+    syncAutoEnd();
     var s1 = infoOk();
     var s2 = s1 && !!serviceType && !!selectedPkg;
     var s3 = s2 && detailsComplete();
@@ -819,9 +918,10 @@
     var loc = val("eventLocation");
     var st = $("startTime").value,
       en = $("endTime").value;
-    var badTime = rentalDurationDays() === 1 && !!st && !!en && en <= st;
+    // the auto-calculated End Time (Snap Lite / Plus) may fall on the next day, so only check manual times
+    var badTime = rentalDurationDays() === 1 && !autoEndOn && !!st && !!en && en <= st;
     $("timeError").hidden = !badTime;
-    var s5 = s4 && !!loc && !badTime;
+    var s5 = s4 && !!loc && !badTime && (!needsStart() || !!st);
 
     var proofOk = !paymentMethod || !paymentMethod.proof || !!proofFile;
     var s6 = s5 && !!paymentMethod && proofOk && $("agree").checked;
