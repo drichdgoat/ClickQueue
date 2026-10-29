@@ -101,7 +101,10 @@ function agr_placeholder_values(array $b): array {
         'service_name'        => br_service_label((string) $b['service_type']),
         'package_name'        => br_package_name($b),
         'equipment_list'      => $list !== '' ? $list : 'N/A',
-        'event_date'          => br_fmt_date($b['event_date'] ?? null),
+        'event_date'          => br_fmt_date($b['event_date'] ?? null) .
+            (br_event_end_date($b) !== (string) ($b['event_date'] ?? '')
+                ? ' – ' . br_fmt_date(br_event_end_date($b))
+                : ''),
         'event_time'          => br_event_time($b),
         'event_location'      => (string) ($b['event_location'] ?? ''),
         'rental_duration'     => br_rental_duration($b),

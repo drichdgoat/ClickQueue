@@ -403,6 +403,10 @@ th {
   .admin-grid-2 {
     grid-template-columns: 1fr;
   }
+  .admin-shell {
+    flex-direction: column;
+    align-items: stretch;
+  }
   .sidebar {
     transform: translateX(-100%);
     transition: 0.25s;
@@ -413,6 +417,7 @@ th {
   .admin-content {
     margin-left: 0;
     width: 100%;
+    min-width: 0;
     padding: 20px;
   }
   .admin-mobile {
@@ -425,6 +430,8 @@ th {
     padding: 12px 16px;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
+    flex: 0 0 auto;
   }
   .stats {
     grid-template-columns: 1fr 1fr;

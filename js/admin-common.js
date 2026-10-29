@@ -92,11 +92,4 @@
     if (open.length) SV.closeModal(open[open.length - 1]);
   });
 
-  /* the original script.js (admin menu toggle) was removed from the project, so handle it here */
-  document.querySelectorAll("[data-admin-menu]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var sb = document.querySelector("aside.sidebar");
-      if (sb) sb.classList.toggle("open");
-    });
-  });
 })();

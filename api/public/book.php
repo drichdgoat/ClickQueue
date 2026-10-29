@@ -75,6 +75,11 @@ if ($eventDate < date('Y-m-d')) {
 if ($location === '') {
     fail(422, 'Please enter the event location.');
 }
+foreach (['start time' => $startTime, 'end time' => $endTime] as $label => $time) {
+    if ($time !== null && $time !== '' && !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $time)) {
+        fail(422, 'Please enter a valid ' . $label . '.');
+    }
+}
 
 /* ---------------- payment method / terms ---------------- */
 $paymentMethod = $_POST['payment_method'] ?? '';
@@ -147,6 +152,7 @@ try {
 
         $summary = buildCameraBookingSummary($pdo, $cameraId, $days, $extraHours, $photoQty, $accessoryIds);
         $packageId = $cameraId;
+        $rentalDays = max(1, (int) ($days ?? 1));
 
     } else {
         $photoboothId = (int) ($_POST['photobooth_id'] ?? 0);
@@ -156,9 +162,14 @@ try {
 
         $summary = buildPhotoboothBookingSummary($pdo, $photoboothId, $addonQtyMap);
         $packageId = $photoboothId;
+        $rentalDays = 1;
     }
 } catch (InvalidArgumentException $e) {
     fail(422, $e->getMessage());
+}
+
+if ($rentalDays === 1 && $startTime !== null && $startTime !== '' && $endTime !== null && $endTime !== '' && $endTime <= $startTime) {
+    fail(422, 'For a one-day booking, end time must be later than start time.');
 }
 
 /* ---------------- save everything in a transaction ---------------- */
@@ -179,9 +190,9 @@ try {
     if (!$lock->fetchColumn()) {
         throw new BookingRejected(422, 'Unknown package.');
     }
-    if (isDateTaken($pdo, $serviceType, $packageId, $eventDate)) {
+    if (isDateTaken($pdo, $serviceType, $packageId, $eventDate, $rentalDays)) {
         throw new BookingRejected(409, $serviceType === 'camera_rental'
-            ? 'Sorry, that camera is already booked on this date. Please choose another date.'
+            ? 'Sorry, that camera is already booked during part of those rental dates. Please choose another date range.'
             : 'Sorry, that package is already booked on this date. Please choose another date.');
     }
 

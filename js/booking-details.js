@@ -111,7 +111,7 @@
     h += section(
       "Event",
       '<div class="kv">' +
-        item("Event date", esc(SV.date(b.event.date))) +
+        item("Event date", esc(b.event.date_label || SV.date(b.event.date))) +
         item("Time", esc(b.event.time_label)) +
         item("Location", esc(b.event.location)) +
         item("Rental duration", esc(b.event.duration_label)) +

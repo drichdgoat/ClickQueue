@@ -3,7 +3,7 @@
 $activePage = $activePage ?? '';
 $cls = fn($p) => $activePage === $p ? ' class="active"' : '';
 ?>
-<aside class="sidebar">
+<aside class="sidebar" id="adminSidebar">
   <img class="logo" src="../../images/snapventure_logo.jpg" alt="SnapVenture" />
   <nav class="admin-nav">
     <a href="dashboard.php"<?= $cls('dashboard') ?>>

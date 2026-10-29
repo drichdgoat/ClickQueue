@@ -28,6 +28,16 @@ function br_fmt_time(?string $t): string {
     return $ts ? date('g:i A', $ts) : $t;
 }
 
+function br_event_end_date(array $b): string {
+    if ($b['service_type'] !== 'camera_rental' || empty($b['detail']['rental_days'])) {
+        return (string) ($b['event_date'] ?? '');
+    }
+    $days = max(1, (int) $b['detail']['rental_days']);
+    return (new DateTimeImmutable((string) $b['event_date']))
+        ->modify('+' . ($days - 1) . ' days')
+        ->format('Y-m-d');
+}
+
 /** Full booking (customer + package + add-ons) by id, or null. */
 function br_load_booking(PDO $pdo, int $bookingId): ?array {
     $stmt = $pdo->prepare('SELECT reference_no FROM bookings WHERE booking_id = ? LIMIT 1');
@@ -58,7 +68,16 @@ function br_equipment_lines(array $b): array {
 function br_event_time(array $b): string {
     $s = br_fmt_time($b['start_time'] ?? null);
     $e = br_fmt_time($b['end_time'] ?? null);
-    if ($s && $e) return $s . ' – ' . $e;
+    $multiDay = $b['service_type'] === 'camera_rental' &&
+        br_event_end_date($b) !== (string) $b['event_date'];
+    if ($multiDay) {
+        $s = $s !== '' ? $s . ' (' . br_fmt_date((string) $b['event_date']) . ')' : '';
+        $e = $e !== '' ? $e . ' (' . br_fmt_date(br_event_end_date($b)) . ')' : '';
+        return $s !== '' && $e !== '' ? $s . ' – ' . $e : ($s ?: $e);
+    }
+    if ($s && $e) {
+        return $s . ' – ' . $e;
+    }
     return $s ?: ($e ?: '');
 }
 
@@ -208,6 +227,11 @@ function br_details_payload(PDO $pdo, array $b): array {
         'addons'        => $items,
         'event' => [
             'date' => $b['event_date'], 'start_time' => $b['start_time'], 'end_time' => $b['end_time'],
+            'end_date' => br_event_end_date($b),
+            'date_label' => br_fmt_date($b['event_date']) .
+                (br_event_end_date($b) !== (string) $b['event_date']
+                    ? ' – ' . br_fmt_date(br_event_end_date($b))
+                    : ''),
             'time_label' => br_event_time($b), 'location' => $b['event_location'],
             'duration_label' => br_rental_duration($b),
         ],
