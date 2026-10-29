@@ -48,6 +48,11 @@
   function iso(y, m, d) {
     return y + "-" + pad(m + 1) + "-" + pad(d);
   }
+  function formatDate(date) {
+    var parts = date.split("-");
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+      .toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
   function todayISO() {
     var t = new Date();
     return iso(t.getFullYear(), t.getMonth(), t.getDate());
@@ -70,7 +75,7 @@
   var MAX_ADDON_QTY = 10;
   var lastSummary = null;
   var picked = ""; // selected date (yyyy-mm-dd)
-  var bookedDates = []; // for current package + visible month
+  var bookedRanges = []; // occupied date ranges for the current package + visible month
   var now = new Date(),
     vy = now.getFullYear(),
     vm = now.getMonth();
@@ -207,6 +212,7 @@
     picked = "";
     renderPackageGrid();
     renderDetails();
+    loadAvailabilityThenDraw();
     refresh();
   });
 
@@ -228,6 +234,7 @@
     picked = "";
     renderPackageGrid();
     renderDetails();
+    loadAvailabilityThenDraw();
     refresh();
   });
 
@@ -381,7 +388,7 @@
         accessoryIds.push(parseInt(c.value, 10));
       });
       picked = ""; // duration changed -> re-check date availability
-      drawCal();
+      loadAvailabilityThenDraw();
     }
     // photobooth add-ons don't affect availability, so the chosen date stays
     refresh();
@@ -530,10 +537,41 @@
       : selectedPkg.photobooth_id;
   }
 
+  function rentalDurationDays() {
+    if (serviceType !== "camera_rental" || !selectedPkg || selectedPkg.pricing_type === "per_photo") {
+      return 1;
+    }
+    var days = $("rentalDays");
+    return days ? Math.max(1, parseInt(days.value, 10) || 1) : 1;
+  }
+
+  function dateAfterDays(date, days) {
+    var parts = date.split("-");
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    d.setDate(d.getDate() + days - 1);
+    return iso(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function updateTimeLabels() {
+    var startLabel = $("startTimeLabel");
+    var endLabel = $("endTimeLabel");
+    var startDate = picked ? formatDate(picked) : "";
+    var endDate = picked ? formatDate(dateAfterDays(picked, rentalDurationDays())) : "";
+    startLabel.textContent = "Start Time" + (startDate ? " (" + startDate + ")" : "");
+    endLabel.textContent = "End Time" + (endDate ? " (" + endDate + ")" : "");
+  }
+
+  function isDateRangeAvailable(startDate) {
+    var endDate = dateAfterDays(startDate, rentalDurationDays());
+    return !bookedRanges.some(function (range) {
+      return range.start_date <= endDate && range.end_date >= startDate;
+    });
+  }
+
   function loadAvailabilityThenDraw() {
     var pid = currentPackageId();
     if (!pid) {
-      bookedDates = [];
+      bookedRanges = [];
       drawCal();
       return;
     }
@@ -542,6 +580,8 @@
         serviceType +
         "&package_id=" +
         pid +
+        "&days=" +
+        rentalDurationDays() +
         "&year=" +
         vy +
         "&month=" +
@@ -551,11 +591,11 @@
         return r.json();
       })
       .then(function (data) {
-        bookedDates = data.booked_dates || [];
+        bookedRanges = data.booked_ranges || [];
         drawCal();
       })
       .catch(function () {
-        bookedDates = [];
+        bookedRanges = [];
         drawCal();
       });
   }
@@ -570,7 +610,7 @@
     for (i = 0; i < first; i++) h += "<span></span>";
     for (i = 1; i <= days; i++) {
       var s = iso(vy, vm, i);
-      var booked = bookedDates.indexOf(s) !== -1;
+      var booked = !isDateRangeAvailable(s);
       var past = s < t;
       var c =
         "bk-day" +
@@ -681,7 +721,28 @@
         serviceType === "camera_rental" ? "Camera Rental" : "Photobooth",
       );
     if (selectedPkg) h += row("camera", "Package", selectedPkg.name);
-    if (picked) h += row("calendar", "Date", picked);
+        if (picked) {
+      var duration = rentalDurationDays();
+      var lastDate = dateAfterDays(picked, duration);
+      h += row(
+        "calendar",
+        duration > 1 ? "Rental Dates" : "Event Date",
+        duration > 1 ? formatDate(picked) + " – " + formatDate(lastDate) : formatDate(picked),
+      );
+      if (serviceType === "camera_rental") {
+        var startTime = $("startTime").value;
+        var endTime = $("endTime").value;
+        if (startTime || endTime) {
+          var timeLabel = duration > 1
+            ? (startTime ? startTime + " (" + formatDate(picked) + ")" : "") +
+              (startTime && endTime ? " – " : "") +
+              (endTime ? endTime + " (" + formatDate(lastDate) + ")" : "")
+            : [startTime, endTime].filter(Boolean).join(" – ");
+          h += row("clock", "Time", timeLabel);
+        }
+      }
+    }
+    // photobooth: Snap Luxe shows the start time only, Lite/Plus show the range
     if (isLuxe() && $("startTime").value)
       h += row("clock", "Start Time", fmtTime($("startTime").value));
     if (isTimedPhotobooth() && $("startTime").value && $("endTime").value)
@@ -842,6 +903,9 @@
   }
 
   function refresh() {
+    function refresh() {
+    updateTimeLabels();
+    syncAutoEnd();
     syncAutoEnd();
     var s1 = infoOk();
     var s2 = s1 && !!serviceType && !!selectedPkg;
@@ -857,7 +921,7 @@
     var st = $("startTime").value,
       en = $("endTime").value;
     // the auto-calculated End Time (Snap Lite / Plus) may fall on the next day, so only check manual times
-    var badTime = !autoEndOn && !!st && !!en && en <= st;
+    var badTime = rentalDurationDays() === 1 && !autoEndOn && !!st && !!en && en <= st;
     $("timeError").hidden = !badTime;
     var s5 = s4 && !!loc && !badTime && (!needsStart() || !!st);
 
@@ -956,7 +1020,24 @@
         "Service",
         serviceType === "camera_rental" ? "Camera Rental" : "Photobooth",
       ) +
-      row("calendar", "Date", data.event_date) +
+      row(
+        "calendar",
+        rentalDurationDays() > 1 ? "Rental Dates" : "Event Date",
+        rentalDurationDays() > 1
+          ? formatDate(data.event_date) + " – " + formatDate(dateAfterDays(data.event_date, rentalDurationDays()))
+          : formatDate(data.event_date),
+      ) +
+      (($("startTime").value || $("endTime").value)
+        ? row(
+            "clock",
+            "Time",
+            rentalDurationDays() > 1
+              ? ($("startTime").value ? $("startTime").value + " (" + formatDate(data.event_date) + ")" : "") +
+                ($("startTime").value && $("endTime").value ? " – " : "") +
+                ($("endTime").value ? $("endTime").value + " (" + formatDate(dateAfterDays(data.event_date, rentalDurationDays())) + ")" : "")
+              : [$("startTime").value, $("endTime").value].filter(Boolean).join(" – "),
+          )
+        : "") +
       row("doc", "Amount Paid Now", peso(data.summary.amount_due_now)) +
       row("doc", "Remaining Balance", peso(data.summary.remaining_balance));
     // Show the summary as a centered popup; the booking page stays visible (dimmed) behind it

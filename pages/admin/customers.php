@@ -22,6 +22,7 @@ function peso($n) { return '₱' . number_format((float) $n, 2); }
     <title>Customer Management - SnapVenture Admin</title>
     <link rel="stylesheet" href="../../css/customers.css" />
       <link rel="stylesheet" href="../../css/admin-sidebar.css" />
+    <link rel="stylesheet" href="../../css/admin-responsive.css?v=<?= filemtime(__DIR__ . '/../../css/admin-responsive.css') ?>" />
   </head>
   <body>
     <div class="admin-shell">
@@ -56,6 +57,6 @@ function peso($n) { return '₱' . number_format((float) $n, 2); }
         </div>
       </main>
     </div>
-    <script src="../../script.js"></script>
+    <script src="../../js/admin-menu.js"></script>
   </body>
 </html>

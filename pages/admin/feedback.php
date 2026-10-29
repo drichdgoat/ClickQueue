@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../../css/equipment.css" />
     <link rel="stylesheet" href="../../css/feedback.css" />
     <link rel="stylesheet" href="../../css/admin-sidebar.css" />
+    <link rel="stylesheet" href="../../css/admin-responsive.css?v=<?= filemtime(__DIR__ . '/../../css/admin-responsive.css') ?>" />
   </head>
   <body>
     <div class="admin-shell">
@@ -59,7 +60,7 @@
       </main>
     </div>
 
-    <script src="../../script.js"></script>
+    <script src="../../js/admin-menu.js"></script>
     <script src="../../js/feedback-admin.js"></script>
   </body>
 </html>

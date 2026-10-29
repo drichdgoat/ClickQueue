@@ -1,242 +1,373 @@
 <?php
 /**
- * SnapVenture - booking review helpers (admin).
- * Reuses getBookingByReference() from includes/pricing.php; adds no new booking logic.
+ * SnapVenture - POST /api/book.php  (multipart/form-data)
+ * Final booking submission. Recomputes price from scratch using
+ * pricing.php so nothing the browser sent is trusted for money math.
+ *
+ * Expected fields:
+ *  full_name, phone, facebook_name, email
+ *  service_type = camera_rental | photobooth
+ *  -- camera_rental --
+ *  camera_id, days, extra_hours, photo_qty, accessory_ids[] (repeatable)
+ *  -- photobooth --
+ *  photobooth_id, addon_qty[addon_id] = quantity
+ *  -- common --
+ *  event_date, start_time, end_time, event_location, notes
+ *  payment_method, agree_terms ("1")
+ *  proof_file (uploaded file, optional depending on payment_method)
  */
-require_once __DIR__ . '/pricing.php';
 
-const BR_PROOF_DIR = 'uploads/proofs';   // where api/public/book.php stores receipts
-const BR_PAYMENT_METHODS_WITHOUT_PROOF = ['Over-the-Counter'];
+header('Content-Type: application/json; charset=utf-8');
 
-function br_peso($n): string {
-    return '₱' . number_format((float) $n, 2);
+require_once __DIR__ . '/../../includes/pricing.php';
+
+function fail(int $code, string $message): void {
+    http_response_code($code);
+    echo json_encode(['success' => false, 'error' => $message]);
+    exit;
 }
 
-function br_service_label(string $t): string {
-    return $t === 'camera_rental' ? 'Camera Rental' : 'Photobooth';
-}
-
-function br_fmt_date(?string $d): string {
-    if (!$d) return '';
-    $ts = strtotime($d);
-    return $ts ? date('F j, Y', $ts) : $d;
-}
-
-function br_fmt_time(?string $t): string {
-    if (!$t) return '';
-    $ts = strtotime($t);
-    return $ts ? date('g:i A', $ts) : $t;
-}
-
-/** Full booking (customer + package + add-ons) by id, or null. */
-function br_load_booking(PDO $pdo, int $bookingId): ?array {
-    $stmt = $pdo->prepare('SELECT reference_no FROM bookings WHERE booking_id = ? LIMIT 1');
-    $stmt->execute([$bookingId]);
-    $ref = $stmt->fetchColumn();
-    if ($ref === false) return null;
-    return getBookingByReference($pdo, (string) $ref);
-}
-
-function br_package_name(array $b): string {
-    $d = $b['detail'] ?? null;
-    if (!$d) return '';
-    return (string) ($b['service_type'] === 'camera_rental' ? ($d['camera_name'] ?? '') : ($d['photobooth_name'] ?? ''));
-}
-
-/** Equipment / package / add-on lines exactly as stored for this booking. */
-function br_equipment_lines(array $b): array {
-    $lines = [];
-    $pkg = br_package_name($b);
-    if ($pkg !== '') $lines[] = $pkg;
-    foreach (($b['addons'] ?? []) as $a) {
-        $qty = isset($a['qty']) ? (int) $a['qty'] : 1;
-        $lines[] = $a['name'] . ($qty > 1 ? ' × ' . $qty : '');
-    }
-    return $lines;
-}
-
-/** Snap Lite / Snap Plus bookings that run past midnight: the end time is earlier than the start time. */
-function br_runs_overnight(array $b): bool {
-    if (($b['service_type'] ?? '') !== 'photobooth') return false;
-    if (empty($b['start_time']) || empty($b['end_time'])) return false;
-    $s = strtotime($b['start_time']);
-    $e = strtotime($b['end_time']);
-    return $s !== false && $e !== false && $e < $s;
-}
-
-function br_event_time(array $b): string {
-    $s = br_fmt_time($b['start_time'] ?? null);
-    $e = br_fmt_time($b['end_time'] ?? null);
-    if ($s && $e) return $s . ' – ' . $e . (br_runs_overnight($b) ? ' (next day)' : '');
-    return $s ?: ($e ?: '');
-}
-
-/** Duration only from data we actually store: rental days (camera) or start/end hours. */
-function br_rental_duration(array $b): string {
-    $d = $b['detail'] ?? null;
-    if ($b['service_type'] === 'camera_rental' && $d && !empty($d['rental_days'])) {
-        $n = (int) $d['rental_days'];
-        return $n . ' day' . ($n === 1 ? '' : 's');
-    }
-    if (!empty($b['start_time']) && !empty($b['end_time'])) {
-        $s = strtotime($b['start_time']);
-        $e = strtotime($b['end_time']);
-        if ($s !== false && $e !== false && br_runs_overnight($b)) $e += 86400; // ends the next day
-        if ($s !== false && $e !== false && $e > $s) {
-            $mins = (int) round(($e - $s) / 60);
-            $h = intdiv($mins, 60);
-            $m = $mins % 60;
-            return $h . ' hour' . ($h === 1 ? '' : 's') . ($m ? ' ' . $m . ' min' : '');
+/* Guarded so these don't clash if pricing.php already defines them. */
+if (!class_exists('BookingRejected')) {
+    class BookingRejected extends RuntimeException {
+        public int $status;
+        public function __construct(int $status, string $message) {
+            parent::__construct($message);
+            $this->status = $status;
         }
     }
-    return '';
 }
 
-function br_payment_label(string $status): string {
-    switch ($status) {
-        case 'verified':  return 'Verified by admin (manual review)';
-        case 'submitted': return 'Submitted - awaiting manual review';
-        default:          return 'Unpaid';
+if (!function_exists('save_proof')) {
+    /** Moves the validated upload into uploads/proofs and returns its site-relative path. */
+    function save_proof(string $tmp, string $ext): string {
+        $uploadDir = __DIR__ . '/../../uploads/proofs/';
+        if (!is_dir($uploadDir)) {
+            if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                error_log('SnapVenture: could not create upload dir ' . $uploadDir);
+                throw new BookingRejected(500, 'Server could not create the uploads folder. Please ask the site admin to create "uploads/proofs" and give it write permission (755).');
+            }
+        }
+        if (!is_writable($uploadDir)) {
+            error_log('SnapVenture: upload dir not writable: ' . $uploadDir);
+            throw new BookingRejected(500, 'Server cannot write to the uploads folder. Please ask the site admin to set "uploads/proofs" permission to 755.');
+        }
+
+        $filename = 'proof_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        if (!move_uploaded_file($tmp, $uploadDir . $filename)) {
+            $lastErr = error_get_last();
+            error_log('SnapVenture: move_uploaded_file failed: ' . ($lastErr['message'] ?? 'unknown error'));
+            throw new BookingRejected(500, 'Could not save the uploaded file. Please try again, or ask the site admin to check folder permissions on "uploads/proofs".');
+        }
+        return 'uploads/proofs/' . $filename;
     }
 }
 
-function br_proof_required(?string $method): bool {
-    return !in_array((string) $method, BR_PAYMENT_METHODS_WITHOUT_PROOF, true);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    fail(405, 'Method not allowed.');
 }
 
-/**
- * Resolves proof_file_path to an absolute path ONLY if it is a regular file
- * directly inside uploads/proofs. Returns null otherwise (path traversal guard).
- */
-function br_safe_proof_abs(?string $relative): ?string {
-    if (!$relative) return null;
-    $name = basename(str_replace('\\', '/', $relative));
-    if ($name === '' || $name[0] === '.') return null;
-    $dir = realpath(dirname(__DIR__) . '/' . BR_PROOF_DIR);
-    if ($dir === false) return null;
-    $abs = realpath($dir . DIRECTORY_SEPARATOR . $name);
-    if ($abs === false || !is_file($abs)) return null;
-    if (strpos($abs, $dir . DIRECTORY_SEPARATOR) !== 0) return null;
-    return $abs;
+/* ---------------- customer info ---------------- */
+$fullName = trim($_POST['full_name'] ?? '');
+$phone    = trim($_POST['phone'] ?? '');
+$facebook = trim($_POST['facebook_name'] ?? '');
+$email    = trim($_POST['email'] ?? '');
+
+if ($fullName === '' || $phone === '' || $facebook === '' || $email === '') {
+    fail(422, 'Please complete all customer information fields.');
+}
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    fail(422, 'Please enter a valid email address.');
 }
 
-function br_detect_mime(string $abs): string {
-    $f = finfo_open(FILEINFO_MIME_TYPE);
-    $m = $f ? (string) finfo_file($f, $abs) : '';
-    if ($f) finfo_close($f);
-    return $m;
+/* ---------------- service selection ---------------- */
+$serviceType = $_POST['service_type'] ?? '';
+if (!in_array($serviceType, ['camera_rental', 'photobooth'], true)) {
+    fail(422, 'Please select a service type.');
 }
 
-/** Receipt metadata for the viewer (no file content). */
-function br_receipt_info(array $b): array {
-    $info = ['exists' => false, 'recorded' => !empty($b['proof_file_path']), 'kind' => null,
-             'mime' => null, 'filename' => null, 'size' => null, 'submitted_at' => $b['created_at'] ?? null];
-    $abs = br_safe_proof_abs($b['proof_file_path'] ?? null);
-    if ($abs === null) return $info;
-    $mime = br_detect_mime($abs);
-    $kinds = ['image/png' => 'image', 'image/jpeg' => 'image', 'application/pdf' => 'pdf'];
-    $info['exists'] = true;
-    $info['mime'] = $mime;
-    $info['kind'] = $kinds[$mime] ?? 'unsupported';
-    $info['filename'] = basename($abs);
-    $info['size'] = filesize($abs);
-    return $info;
+/* ---------------- event/schedule ---------------- */
+$eventDate = $_POST['event_date'] ?? '';
+$startTime = $_POST['start_time'] ?? null;
+$endTime   = $_POST['end_time'] ?? null;
+$location  = trim($_POST['event_location'] ?? '');
+$notes     = trim($_POST['notes'] ?? '');
+
+if (!$eventDate || !DateTime::createFromFormat('Y-m-d', $eventDate)) {
+    fail(422, 'Please select a valid date.');
+}
+if ($eventDate < date('Y-m-d')) {
+    fail(422, 'The selected date has already passed.');
+}
+if ($location === '') {
+    fail(422, 'Please enter the event location.');
+}
+foreach (['start time' => $startTime, 'end time' => $endTime] as $label => $time) {
+    if ($time !== null && $time !== '' && !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $time)) {
+        fail(422, 'Please enter a valid ' . $label . '.');
+    }
 }
 
-/**
- * Same availability rule the public booking form uses (one booking per package per date,
- * cancelled bookings don't count), but excluding the booking being reviewed.
- */
-function br_availability_conflicts(PDO $pdo, array $b): array {
-    $d = $b['detail'] ?? null;
-    if (!$d) return [];
-    if ($b['service_type'] === 'camera_rental') {
-        $sql = "SELECT b.booking_id, b.reference_no, b.status FROM bookings b
-                JOIN booking_camera_details x ON x.booking_id = b.booking_id
-                WHERE x.camera_id = ? AND b.event_date = ? AND b.status != 'cancelled' AND b.booking_id != ?";
-        $pkgId = (int) $d['camera_id'];
+/* ---------------- payment method / terms ---------------- */
+$paymentMethod = $_POST['payment_method'] ?? '';
+$agreeTerms = ($_POST['agree_terms'] ?? '') === '1';
+$validMethods = ['Bank Transfer', 'GCash / PayMaya', 'Over-the-Counter'];
+if (!in_array($paymentMethod, $validMethods, true)) {
+    fail(422, 'Please choose a payment method.');
+}
+if (!$agreeTerms) {
+    fail(422, 'Please agree to the rental terms and conditions.');
+}
+$needsProof = $paymentMethod !== 'Over-the-Counter';
+
+/* ---------------- proof of payment upload ----------------
+   Only validated here. The file is moved to disk later (save_proof) once every
+   booking check has passed, so a rejected booking never leaves a stray receipt. */
+$proofPath = null;
+$proofTmp  = null;
+$proofExt  = null;
+if (isset($_FILES['proof_file']) && $_FILES['proof_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+    $file = $_FILES['proof_file'];
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        fail(422, 'There was a problem uploading your file.');
+    }
+    if ($file['size'] > 5 * 1024 * 1024) {
+        fail(422, 'Proof of payment must be 5MB or smaller.');
+    }
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    $allowed = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'application/pdf' => 'pdf'];
+    if (!isset($allowed[$mime])) {
+        fail(422, 'Proof of payment must be a PNG, JPG, or PDF file.');
+    }
+    $proofTmp = $file['tmp_name'];
+    $proofExt = $allowed[$mime];
+} elseif ($needsProof) {
+    fail(422, 'Please upload your proof of payment for this payment method.');
+}
+
+/* ---------------- authoritative price calculation ---------------- */
+$autoEnd = false; // true when the server calculates the end time (Snap Lite / Snap Plus)
+
+try {
+    if ($serviceType === 'camera_rental') {
+        $cameraId = (int) ($_POST['camera_id'] ?? 0);
+        if (!$cameraId) fail(422, 'Please select a camera package.');
+
+        $days = isset($_POST['days']) && $_POST['days'] !== '' ? (int) $_POST['days'] : null;
+        $extraHours = isset($_POST['extra_hours']) && $_POST['extra_hours'] !== '' ? (int) $_POST['extra_hours'] : null;
+        $photoQty = isset($_POST['photo_qty']) && $_POST['photo_qty'] !== '' ? (int) $_POST['photo_qty'] : null;
+        $accessoryIds = array_map('intval', $_POST['accessory_ids'] ?? []);
+        $rentalDays = max(1, (int) ($days ?? 1));
+
+        // quick pre-check; the authoritative check runs again under a row lock below
+        if (isDateTaken($pdo, 'camera_rental', $cameraId, $eventDate, $rentalDays)) {
+            fail(409, 'Sorry, that camera is already booked during part of those rental dates. Please choose another date range.');
+        }
+
+        $summary = buildCameraBookingSummary($pdo, $cameraId, $days, $extraHours, $photoQty, $accessoryIds);
+        $packageId = $cameraId;
+
     } else {
-        $sql = "SELECT b.booking_id, b.reference_no, b.status FROM bookings b
-                JOIN booking_photobooth_details x ON x.booking_id = b.booking_id
-                WHERE x.photobooth_id = ? AND b.event_date = ? AND b.status != 'cancelled' AND b.booking_id != ?";
-        $pkgId = (int) $d['photobooth_id'];
+        $photoboothId = (int) ($_POST['photobooth_id'] ?? 0);
+        if (!$photoboothId) fail(422, 'Please select a photobooth package.');
+
+        $addonQtyMap = sanitizeAddonQty($_POST['addon_qty'] ?? []);
+
+        /* ---- schedule rules per package (the browser's times are not trusted) ----
+           Snap Lite / Snap Plus: start time required; end time = start + 3 hours + Additional Hours.
+           Snap Luxe: start time required; no end time and no Additional Hours (whole-duration package). */
+        $pkgNameStmt = $pdo->prepare('SELECT name FROM photobooth_packages WHERE photobooth_id = ? AND is_active = 1');
+        $pkgNameStmt->execute([$photoboothId]);
+        $pkgName = (string) $pkgNameStmt->fetchColumn();
+        $isLuxe  = (bool) preg_match('/luxe/i', $pkgName);
+        $isTimed = !$isLuxe && (bool) preg_match('/\b(lite|plus)\b/i', $pkgName);
+        $autoEnd = $isTimed;
+
+        if ($isLuxe || $isTimed) {
+            if (!$startTime || !preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $startTime)) {
+                fail(422, 'Please select a start time.');
+            }
+
+            // quantity of the "Additional Hours" add-on in this request
+            $hoursAddonIds = $pdo->query("SELECT addon_id FROM photobooth_addons WHERE name LIKE '%hour%'")
+                ->fetchAll(PDO::FETCH_COLUMN);
+            $extraHours = 0;
+            foreach ($hoursAddonIds as $hid) {
+                $extraHours += (int) ($addonQtyMap[(int) $hid] ?? 0);
+            }
+
+            if ($isLuxe) {
+                if ($extraHours > 0) {
+                    fail(422, 'Additional Hours is not available for Snap Luxe.');
+                }
+                $endTime = null;
+            } else {
+                $parts = explode(':', $startTime);
+                $endMinutes = (((int) $parts[0]) * 60 + (int) $parts[1] + (3 + $extraHours) * 60) % (24 * 60);
+                $endTime = sprintf('%02d:%02d:00', intdiv($endMinutes, 60), $endMinutes % 60);
+            }
+        }
+
+        if (isDateTaken($pdo, 'photobooth', $photoboothId, $eventDate)) {
+            fail(409, 'Sorry, that package is already booked on this date. Please choose another date.');
+        }
+
+        $summary = buildPhotoboothBookingSummary($pdo, $photoboothId, $addonQtyMap);
+        $packageId = $photoboothId;
+        $rentalDays = 1;
     }
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$pkgId, $b['event_date'], (int) $b['booking_id']]);
-    return $stmt->fetchAll();
+} catch (InvalidArgumentException $e) {
+    fail(422, $e->getMessage());
 }
 
-function br_admin_name(PDO $pdo, $adminId): ?string {
-    if (!$adminId) return null;
-    $stmt = $pdo->prepare('SELECT name FROM admins WHERE id = ?');
-    $stmt->execute([(int) $adminId]);
-    $n = $stmt->fetchColumn();
-    return $n === false ? null : (string) $n;
+// A one-day booking must end after it starts, except Snap Lite / Plus where the
+// server-calculated end time may legitimately fall after midnight.
+if (
+    $rentalDays === 1 && !$autoEnd
+    && $startTime !== null && $startTime !== ''
+    && $endTime !== null && $endTime !== ''
+    && $endTime <= $startTime
+) {
+    fail(422, 'For a one-day booking, end time must be later than start time.');
 }
 
-/**
- * The existing booking form + database collect exactly ONE customer file: the payment receipt.
- * There is no requirements-upload field, handler or column, so nothing is invented here.
- */
-function br_requirements_info(): array {
-    return [
-        'collected' => false,
-        'note' => 'The current booking form does not collect any requirement documents, and the database has no '
-                . 'column for them. The only customer upload is the proof of payment shown in the Proof of Payment tab.',
-        'items' => [],
-    ];
-}
+/* ---------------- save everything in a transaction ---------------- */
+try {
+    $pdo->beginTransaction();
 
-/** Everything the admin booking-details view shows (only fields that exist). */
-function br_details_payload(PDO $pdo, array $b): array {
-    $d = $b['detail'] ?? [];
-    $receipt = br_receipt_info($b);
-    $items = [];
-    foreach (($b['addons'] ?? []) as $a) {
-        $items[] = ['name' => $a['name'], 'qty' => isset($a['qty']) ? (int) $a['qty'] : 1,
-                    'price' => (float) $a['price_applied']];
+    // Serialise bookings of the same package: whoever gets this row lock first checks and saves;
+    // the other request waits, then sees the committed booking and is rejected. The lock query MUST
+    // run before any plain SELECT so the availability check below reads fresh, committed data.
+    if ($serviceType === 'camera_rental') {
+        $lock = $pdo->prepare('SELECT camera_id FROM camera_packages WHERE camera_id = ? FOR UPDATE');
+        $lock->execute([$packageId]);
+    } else {
+        $lock = $pdo->prepare('SELECT photobooth_id FROM photobooth_packages WHERE photobooth_id = ? FOR UPDATE');
+        $lock->execute([$packageId]);
     }
-    return [
-        'booking_id'    => (int) $b['booking_id'],
-        'reference_no'  => $b['reference_no'],
-        'booking_date'  => $b['created_at'],
-        'status'        => $b['status'],
-        'confirmed_at'  => $b['confirmed_at'] ?? null,
-        'customer' => [
-            'name' => $b['full_name'], 'email' => $b['email'],
-            'phone' => $b['phone'], 'facebook' => $b['facebook_name'],
-        ],
-        'service_type'  => $b['service_type'],
-        'service_label' => br_service_label($b['service_type']),
-        'package_name'  => br_package_name($b),
-        'camera_detail' => $b['service_type'] === 'camera_rental' ? [
-            'rental_days' => $d['rental_days'] ?? null,
-            'photo_qty'   => $d['photo_qty'] ?? null,
-            'rate_applied' => isset($d['rate_applied']) ? (float) $d['rate_applied'] : null,
-            'rental_subtotal' => isset($d['rental_subtotal']) ? (float) $d['rental_subtotal'] : null,
-        ] : null,
-        'addons'        => $items,
-        'event' => [
-            'date' => $b['event_date'], 'start_time' => $b['start_time'], 'end_time' => $b['end_time'],
-            'time_label' => br_event_time($b), 'location' => $b['event_location'],
-            'duration_label' => br_rental_duration($b),
-        ],
-        'notes'         => $b['notes'],
-        'amounts' => [
-            'package_price' => (float) $b['package_price'], 'addons_total' => (float) $b['addons_total'],
-            'grand_total' => (float) $b['grand_total'], 'amount_due_now' => (float) $b['amount_due_now'],
-            'remaining_balance' => (float) $b['remaining_balance'],
-        ],
-        'payment' => [
-            'method' => $b['payment_method'],
-            'status' => $b['payment_status'],
-            'status_label' => br_payment_label($b['payment_status']),
-            'proof_required' => br_proof_required($b['payment_method']),
-            'reviewed_at' => $b['payment_reviewed_at'] ?? null,
-            'reviewed_by' => br_admin_name($pdo, $b['payment_reviewed_by'] ?? null),
-            'receipt' => $receipt,
-        ],
-        'requirements' => br_requirements_info(),
-        'availability' => ['conflicts' => br_availability_conflicts($pdo, $b)],
-    ];
+    if (!$lock->fetchColumn()) {
+        throw new BookingRejected(422, 'Unknown package.');
+    }
+    if (isDateTaken($pdo, $serviceType, $packageId, $eventDate, $rentalDays)) {
+        throw new BookingRejected(409, $serviceType === 'camera_rental'
+            ? 'Sorry, that camera is already booked during part of those rental dates. Please choose another date range.'
+            : 'Sorry, that package is already booked on this date. Please choose another date.');
+    }
+
+    // All checks passed: only now is the receipt written to disk.
+    if ($proofTmp !== null) {
+        $proofPath = save_proof($proofTmp, $proofExt);
+    }
+
+    // find or create the customer
+    $find = $pdo->prepare('SELECT customer_id FROM customers WHERE email = ?');
+    $find->execute([$email]);
+    $customerId = $find->fetchColumn();
+    if (!$customerId) {
+        $ins = $pdo->prepare(
+            'INSERT INTO customers (full_name, phone, facebook_name, email) VALUES (?,?,?,?)'
+        );
+        $ins->execute([$fullName, $phone, $facebook, $email]);
+        $customerId = $pdo->lastInsertId();
+    } else {
+        // keep contact info current
+        $upd = $pdo->prepare(
+            'UPDATE customers SET full_name=?, phone=?, facebook_name=? WHERE customer_id=?'
+        );
+        $upd->execute([$fullName, $phone, $facebook, $customerId]);
+    }
+
+    $referenceNo = 'SV-' . strtoupper(base_convert((string) time(), 10, 36)) . strtoupper(substr(bin2hex(random_bytes(2)), 0, 3));
+
+    $insBooking = $pdo->prepare(
+        'INSERT INTO bookings
+            (reference_no, customer_id, service_type, event_date, start_time, end_time,
+             event_location, notes, package_price, addons_total, grand_total,
+             amount_due_now, remaining_balance, payment_method, payment_status, proof_file_path, status)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+    );
+    $insBooking->execute([
+        $referenceNo,
+        $customerId,
+        $serviceType,
+        $eventDate,
+        $startTime ?: null,
+        $endTime ?: null,
+        $location,
+        $notes ?: null,
+        $summary['package_price'],
+        $summary['addons_total'],
+        $summary['grand_total'],
+        $summary['amount_due_now'],
+        $summary['remaining_balance'],
+        $paymentMethod,
+        'submitted',
+        $proofPath,
+        'pending',
+    ]);
+    $bookingId = $pdo->lastInsertId();
+
+    if ($serviceType === 'camera_rental') {
+        $insDetail = $pdo->prepare(
+            'INSERT INTO booking_camera_details
+                (booking_id, camera_id, rental_days, photo_qty, rate_applied, rental_subtotal)
+             VALUES (?,?,?,?,?,?)'
+        );
+        $insDetail->execute([
+            $bookingId,
+            $packageId,
+            $days,
+            $photoQty,
+            $summary['rental']['rate_applied'],
+            $summary['rental']['subtotal'],
+        ]);
+
+        if (!empty($summary['accessories']['items'])) {
+            $insAcc = $pdo->prepare(
+                'INSERT INTO booking_camera_accessories (booking_id, accessory_id, price_applied) VALUES (?,?,?)'
+            );
+            foreach ($summary['accessories']['items'] as $acc) {
+                $insAcc->execute([$bookingId, $acc['accessory_id'], $acc['price']]);
+            }
+        }
+    } else {
+        $insDetail = $pdo->prepare(
+            'INSERT INTO booking_photobooth_details (booking_id, photobooth_id, package_price_applied) VALUES (?,?,?)'
+        );
+        $insDetail->execute([$bookingId, $packageId, $summary['package_price']]);
+
+        if (!empty($summary['addons']['items'])) {
+            $insAddon = $pdo->prepare(
+                'INSERT INTO booking_photobooth_addons (booking_id, addon_id, qty, price_applied) VALUES (?,?,?,?)'
+            );
+            foreach ($summary['addons']['items'] as $addon) {
+                $insAddon->execute([$bookingId, $addon['addon_id'], $addon['qty'], $addon['line_total']]);
+            }
+        }
+    }
+
+    $pdo->commit();
+
+    echo json_encode([
+        'success'       => true,
+        'reference_no'  => $referenceNo,
+        'summary'       => $summary,
+        'email'         => $email,
+        'event_date'    => $eventDate,
+    ]);
+} catch (BookingRejected $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    if ($proofPath && file_exists(__DIR__ . '/../../' . $proofPath)) {
+        unlink(__DIR__ . '/../../' . $proofPath); // clean up orphaned upload
+    }
+    fail($e->status, $e->getMessage());
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    if ($proofPath && file_exists(__DIR__ . '/../../' . $proofPath)) {
+        unlink(__DIR__ . '/../../' . $proofPath); // clean up orphaned upload
+    }
+    error_log('SnapVenture book.php: ' . $e->getMessage());
+    fail(500, 'We could not save your reservation. Please try again.');
 }

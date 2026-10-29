@@ -79,6 +79,7 @@ $qs = fn(array $o) => http_build_query(array_merge(['tab' => 'sent', 'q' => $q, 
     <link rel="stylesheet" href="../../css/bookings.css" />
     <link rel="stylesheet" href="../../css/admin-sidebar.css" />
     <link rel="stylesheet" href="../../css/booking-review.css" />
+    <link rel="stylesheet" href="../../css/admin-responsive.css?v=<?= filemtime(__DIR__ . '/../../css/admin-responsive.css') ?>" />
   </head>
   <body data-api="../../api/admin/" data-csrf="<?= htmlspecialchars(csrf_token()) ?>">
     <div class="admin-shell">
@@ -301,6 +302,7 @@ $qs = fn(array $o) => http_build_query(array_merge(['tab' => 'sent', 'q' => $q, 
     <?php include __DIR__ . '/partials/agreement-modal.php'; ?>
     <script type="application/json" id="tplData"><?= json_encode($tplJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
     <script src="../../js/admin-common.js"></script>
+    <script src="../../js/admin-menu.js"></script>
     <script src="../../js/agreement-modal.js"></script>
     <script src="../../js/agreements-admin.js"></script>
   </body>

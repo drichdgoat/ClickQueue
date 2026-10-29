@@ -115,7 +115,7 @@
 
             <!-- 4. Select Date -->
             <section class="bk-card is-locked" id="cardDate">
-              <h2>Select Date</h2>
+              <h2>Select Event Date</h2>
               <div class="bk-body">
                 <div class="bk-cal-head">
                   <button type="button" class="bk-nav" id="calPrev" aria-label="Previous month"><svg class="ic"><use href="#i-left"/></svg></button>
@@ -141,16 +141,16 @@
                 </div>
                 <div class="bk-row2">
                   <div class="bk-field">
-                    <label for="startTime">Start Time</label>
+                    <label id="startTimeLabel" for="startTime">Start Time</label>
                     <div class="bk-input"><svg class="ic"><use href="#i-clock"/></svg><input id="startTime" type="time" /></div>
                   </div>
                   <div class="bk-field">
-                    <label for="endTime">End Time</label>
+                    <label id="endTimeLabel" for="endTime">End Time</label>
                     <div class="bk-input"><svg class="ic"><use href="#i-clock"/></svg><input id="endTime" type="time" /></div>
                     <small class="bk-auto-note" id="endAutoNote" hidden>Calculated automatically: 3 hours + any additional hours.</small>
                   </div>
                 </div>
-                <p class="bk-error" id="timeError" hidden>End time must be later than start time.</p>
+                <p class="bk-error" id="timeError" hidden>For a one-day booking, end time must be later than start time.</p>
                 <div class="bk-field">
                   <label for="notes">Additional Notes</label>
                   <textarea id="notes" placeholder="Any special requests or notes for your event"></textarea>
@@ -259,6 +259,6 @@
     </footer>
 
     <script src="js/nav.js"></script>
-    <script src="../js/booking-form.js"></script>
+    <script src="../js/booking-form.js?v=<?= filemtime(__DIR__ . '/../js/booking-form.js') ?>"></script>
   </body>
 </html>

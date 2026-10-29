@@ -22,9 +22,16 @@ $photoboothBookings = (int) $pdo->query("SELECT COUNT(*) FROM bookings WHERE ser
 
 /* ---------------- recent bookings ---------------- */
 $recent = $pdo->query(
-    "SELECT b.reference_no, COALESCE(b.contact_name, c.full_name) AS full_name, b.service_type, b.event_date, b.grand_total, b.amount_due_now, b.status
-     FROM bookings b JOIN customers c ON c.customer_id = b.customer_id
-     ORDER BY b.created_at DESC LIMIT 8"
+    "SELECT b.reference_no,
+           c.full_name AS contact_name,
+           b.service_type,
+           b.event_date,
+           b.grand_total,
+           b.amount_due_now,
+           b.status
+    FROM bookings b
+    JOIN customers c ON c.customer_id = b.customer_id
+    ORDER BY b.created_at DESC"
 )->fetchAll();
 
 function peso($n) { return '₱' . number_format((float) $n, 2); }
@@ -38,6 +45,7 @@ function serviceLabel($t) { return $t === 'camera_rental' ? 'Camera Rental' : 'P
     <title>Dashboard - SnapVenture Admin</title>
     <link rel="stylesheet" href="../../css/dashboard.css" />
       <link rel="stylesheet" href="../../css/admin-sidebar.css" />
+    <link rel="stylesheet" href="../../css/admin-responsive.css?v=<?= filemtime(__DIR__ . '/../../css/admin-responsive.css') ?>" />
   </head>
   <body>
     <div class="admin-shell">
@@ -89,7 +97,7 @@ function serviceLabel($t) { return $t === 'camera_rental' ? 'Camera Rental' : 'P
               <?php foreach ($recent as $b): ?>
                 <tr>
                   <td><?= htmlspecialchars($b['reference_no']) ?></td>
-                  <td><?= htmlspecialchars($b['full_name']) ?></td>
+                  <td><?= htmlspecialchars($b['contact_name']) ?></td>
                   <td><?= serviceLabel($b['service_type']) ?></td>
                   <td><?= htmlspecialchars($b['event_date']) ?></td>
                   <td><?= peso($b['grand_total']) ?></td>
@@ -102,6 +110,6 @@ function serviceLabel($t) { return $t === 'camera_rental' ? 'Camera Rental' : 'P
         </div>
       </main>
     </div>
-    <script src="../../script.js"></script>
+    <script src="../../js/admin-menu.js"></script>
   </body>
 </html>

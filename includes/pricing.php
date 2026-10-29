@@ -449,17 +449,24 @@ function getBookingByReference(PDO $pdo, string $referenceNo): ?array {
     return $booking;
 }
 
-function isDateTaken(PDO $pdo, string $serviceType, int $packageId, string $date): bool {
+function isDateTaken(PDO $pdo, string $serviceType, int $packageId, string $date, int $days = 1): bool {
+    $days = max(1, $days);
+    $endDate = (new DateTimeImmutable($date))->modify('+' . $days . ' days')->format('Y-m-d');
     if ($serviceType === 'camera_rental') {
         $sql = "SELECT COUNT(*) FROM bookings b
                 JOIN booking_camera_details d ON d.booking_id = b.booking_id
-                WHERE d.camera_id = ? AND b.event_date = ? AND b.status != 'cancelled'";
+                WHERE d.camera_id = ?
+                  AND b.event_date < ?
+                  AND DATE_ADD(b.event_date, INTERVAL GREATEST(COALESCE(d.rental_days, 1), 1) DAY) > ?
+                  AND b.status != 'cancelled'";
     } else {
         $sql = "SELECT COUNT(*) FROM bookings b
                 JOIN booking_photobooth_details d ON d.booking_id = b.booking_id
                 WHERE d.photobooth_id = ? AND b.event_date = ? AND b.status != 'cancelled'";
     }
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$packageId, $date]);
+    $stmt->execute($serviceType === 'camera_rental'
+        ? [$packageId, $endDate, $date]
+        : [$packageId, $date]);
     return ((int) $stmt->fetchColumn()) >= 1;
 }

@@ -227,6 +227,22 @@
 }
 
 @media (max-width: 600px) {
+  .admin-content {
+    padding: 16px;
+  }
+  .admin-heading h1 {
+    font-size: 26px;
+    line-height: 1.2;
+  }
+  .booking-page-head {
+    align-items: flex-start;
+  }
+  .admin-card {
+    padding: 16px;
+  }
+  .category-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .table-toolbar {
     align-items: flex-start;
   }
@@ -235,5 +251,8 @@
   }
   .status-filter {
     flex: 1;
+  }
+  .bookings-wrap {
+    max-width: 100%;
   }
 }
