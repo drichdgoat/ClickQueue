@@ -441,11 +441,21 @@
   background: var(--brown);
 }
 
-/* ---------- accessory / add-on cards ---------- */
+/* ---------- accessory / add-on mini cards ---------- */
 .addon-group-title {
   margin: 30px 0 16px;
   font-size: 18px;
   color: var(--brown-dark);
+}
+.addon-mini {
+  text-align: center;
+  background: var(--light);
+}
+.addon-mini .price {
+  color: var(--brown);
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 6px;
 }
 
 /* =========================================
@@ -516,98 +526,5 @@
   }
   .pkg-slide.is-center:hover .pkg-media img {
     transform: none;
-  }
-}
-/* ---------- Add-on cards ---------- */
-.addon-card {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(89, 66, 55, 0.08);
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    border-color 0.25s ease;
-}
-
-.addon-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--brown);
-  box-shadow: 0 10px 24px rgba(89, 66, 55, 0.16);
-}
-
-.addon-media {
-  height: 180px;
-  overflow: hidden;
-  background: linear-gradient(135deg, #efe6de, #f7f3ef);
-  position: relative;
-}
-
-.addon-media img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.addon-card:hover .addon-media img {
-  transform: scale(1.04);
-}
-
-.addon-media--empty {
-  display: grid;
-  place-items: center;
-}
-
-.addon-media--empty .pkg-media-icon {
-  width: 56px;
-  height: 56px;
-  color: var(--brown);
-  opacity: 0.4;
-}
-
-.addon-head {
-  padding: 16px 20px 10px;
-  text-align: center;
-}
-
-.addon-head h3 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--brown-dark);
-}
-
-.addon-pricebox {
-  padding: 14px 20px;
-  text-align: center;
-  background: var(--light);
-  border-top: 1px solid var(--border);
-}
-
-.addon-price {
-  color: var(--brown);
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.addon-price small {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-@media (max-width: 600px) {
-  .addon-media {
-    height: 150px;
-  }
-
-  .addon-head {
-    padding: 14px 16px 10px;
   }
 }
