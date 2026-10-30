@@ -1,4 +1,4 @@
-/* SnapVenture - bookings */
+/* SnapVenture - booking */
 /* SnapVenture - simple CSS only */
 * {
   box-sizing: border-box;
@@ -50,7 +50,7 @@ button {
   min-height: 70vh;
 }
 .section {
-  padding: 64px 0;
+  padding: 48px 0;
 }
 .section.light {
   background: var(--white);
@@ -73,9 +73,10 @@ button {
   justify-content: space-between;
 }
 .logo {
-  width: 155px;
+  width: 100px;
   height: auto;
   display: block;
+  height: auto;
 }
 .nav-links {
   display: flex;
@@ -142,307 +143,570 @@ button {
   border: 0;
 }
 
-.admin-shell {
-  min-height: 100vh;
-  display: flex;
-  background: var(--cream);
+.page-banner {
+  padding: 40px 0;
+  text-align: center;
+  background: linear-gradient(135deg, #eee6df, #f7f3ef);
 }
-.sidebar {
-  width: 250px;
-  background: white;
-  border-right: 1px solid var(--border);
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  padding: 24px 16px;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
+.page-banner h1 {
+  margin: 0 0 8px;
+  font-size: 36px;
 }
-.sidebar .logo {
-  width: 160px;
-  margin: 0 8px 5px;
-}
-.admin-label {
+.page-banner p {
+  margin: 0 auto;
   color: var(--muted);
-  font-size: 14px;
-  margin: 0 8px 22px;
-}
-.admin-nav {
-  flex: 1;
-}
-.admin-nav a {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 12px;
-  margin: 4px 0;
-  border-radius: 8px;
-  color: var(--brown);
-}
-.admin-nav a:hover {
-  background: var(--cream);
-}
-.admin-nav a.active {
-  background: var(--brown);
-  color: white;
-}
-.sidebar-bottom {
-  border-top: 1px solid var(--border);
-  padding-top: 15px;
-}
-.admin-content {
-  margin-left: 250px;
-  padding: 32px;
-  width: calc(100% - 250px);
-}
-.admin-mobile {
-  display: none;
-}
-.admin-heading h1 {
-  color: var(--brown);
-  margin: 0;
-  font-size: 32px;
-}
-.admin-heading p {
-  color: #6b524499;
-  margin-top: 5px;
+  max-width: 650px;
 }
 
-.stats {
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.grid-4 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin: 25px 0;
-}
-.stat-card {
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-}
-.stat-card .label {
-  color: #6b524499;
-  font-size: 14px;
-}
-.stat-card .value {
-  color: var(--brown);
-  font-size: 27px;
-  font-weight: bold;
-  margin: 4px 0;
-}
-.change {
-  color: #16a34a;
-  font-size: 12px;
+  gap: 20px;
 }
 
-.admin-grid-2 {
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+  box-shadow: 0 2px 8px #00000006;
+}
+.card img {
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.card h3 {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+.card p {
+  color: var(--muted);
+}
+.check-list {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 24px;
+}
+.check-list li {
+  margin: 10px 0;
+}
+.check-list li::before {
+  content: "✓";
+  color: var(--brown);
+  font-weight: bold;
+  margin-right: 9px;
+}
+
+.form-card {
+  max-width: 850px;
+  margin: auto;
+}
+.form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
-.admin-card {
-  background: white;
+.field {
+  margin-bottom: 18px;
+}
+.field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 12px 13px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 22px;
-  margin-bottom: 20px;
+  border-radius: 8px;
+  background: white;
+  color: #3f332d;
 }
-.admin-card h2 {
-  color: var(--brown);
-  font-size: 19px;
-  margin: 0 0 16px;
+.field textarea {
+  min-height: 120px;
+  resize: vertical;
 }
-.fake-chart {
-  height: 220px;
-  position: relative;
-  display: flex;
-  align-items: end;
-  gap: 16px;
-  padding: 20px 8px 5px;
-  border-left: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.bar {
-  flex: 1;
-  background: var(--brown);
-  border-radius: 6px 6px 0 0;
-  min-width: 20px;
-}
-.line-chart {
-  height: 220px;
-  display: flex;
-  align-items: center;
-}
-.line-chart svg {
-  width: 100%;
-  height: 100%;
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-th,
-td {
-  text-align: left;
-  padding: 12px 10px;
-  border-bottom: 1px solid var(--border);
-  font-size: 14px;
-}
-th {
-  color: var(--brown);
-}
-.status {
-  display: inline-block;
-  padding: 4px 9px;
-  border-radius: 15px;
-  font-size: 12px;
-}
-.confirmed {
-  background: var(--green-bg);
-  color: var(--green);
-}
-.pending {
-  background: var(--yellow-bg);
-  color: var(--yellow);
-}
-.completed {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-.cancelled {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.admin-table-wrap {
-  overflow-x: auto;
-}
-.action-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 15px;
-}
-
-.login-page {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: var(--cream);
+.summary {
+  background: var(--light);
+  border-radius: 10px;
   padding: 20px;
+  margin-top: 20px;
 }
-.login-box {
-  width: min(430px, 100%);
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 34px;
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
 }
-.login-box .logo {
-  margin: 0 auto 15px;
-}
-.login-box h1 {
-  text-align: center;
-  color: var(--brown);
-}
-.login-box p {
-  color: var(--muted);
-  text-align: center;
+.summary-row:last-child {
+  border-bottom: 0;
+  font-weight: bold;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
+.footer {
+  background: white;
+  border-top: 1px solid var(--border);
+  padding: 36px 0 16px;
 }
-th,
-td {
-  text-align: left;
-  padding: 12px 10px;
-  border-bottom: 1px solid var(--border);
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1.2fr;
+  gap: 32px;
+  align-items: start;
+}
+.footer .logo {
+  width: 84px;
+  margin-bottom: 10px;
+}
+.footer-brand p {
+  max-width: 320px;
+  margin: 0;
+}
+.footer h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--brown);
+}
+.footer p,
+.footer a {
+  color: var(--muted);
   font-size: 14px;
 }
-th {
+.footer-links a {
+  display: block;
+  margin: 6px 0;
+}
+.copyright {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 14px;
+  text-align: center;
   color: var(--brown);
+  opacity: 0.75;
+  font-size: 12.5px;
 }
-.status {
-  display: inline-block;
-  padding: 4px 9px;
-  border-radius: 15px;
-  font-size: 12px;
+@media (max-width: 900px) {
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
 }
-.confirmed {
-  background: var(--green-bg);
-  color: var(--green);
-}
-.pending {
-  background: var(--yellow-bg);
-  color: var(--yellow);
-}
-.completed {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-.cancelled {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.admin-table-wrap {
-  overflow-x: auto;
-}
-.action-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 15px;
+@media (max-width: 600px) {
+  .footer-grid {
+    gap: 20px;
+  }
 }
 
 @media (max-width: 900px) {
-  .admin-grid-2 {
+  .nav-links {
+    display: none;
+  }
+  .menu-btn {
+    display: block;
+  }
+  .mobile-nav.show {
+    display: block;
+  }
+  .hero-grid,
+  .grid-2 {
     grid-template-columns: 1fr;
   }
-  .admin-shell {
-    flex-direction: column;
-    align-items: stretch;
+  .grid-3 {
+    grid-template-columns: 1fr 1fr;
   }
-  .sidebar {
-    transform: translateX(-100%);
-    transition: 0.25s;
+  .grid-4 {
+    grid-template-columns: 1fr 1fr;
   }
-  .sidebar.open {
-    transform: translateX(0);
+  .form-grid {
+    grid-template-columns: 1fr;
   }
-  .admin-content {
-    margin-left: 0;
-    width: 100%;
-    min-width: 0;
-    padding: 20px;
-  }
-  .admin-mobile {
-    display: flex;
-    position: sticky;
-    top: 0;
-    z-index: 55;
-    background: white;
-    border-bottom: 1px solid var(--border);
-    padding: 12px 16px;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    flex: 0 0 auto;
-  }
-  .stats {
+  .footer-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
 @media (max-width: 600px) {
-  .stats {
+  .section {
+    padding: 36px 0;
+  }
+  .container {
+    width: min(100% - 24px, 1180px);
+  }
+  .hero {
+    padding: 55px 0;
+  }
+  .hero-images img {
+    height: 200px;
+  }
+  .grid-3,
+  .grid-4,
+  .footer-grid {
     grid-template-columns: 1fr;
   }
-  th,
-  td {
-    white-space: nowrap;
+  .package.popular {
+    transform: none;
+  }
+  .page-banner h1 {
+    font-size: 30px;
+  }
+  .card {
+    padding: 20px;
+  }
+}
+
+/* =====================================================================
+   SnapVenture - shared navigation + hover/focus design system
+   Load LAST on every customer page (after the page's own CSS):
+     <link rel="stylesheet" href="css/site-ui.css">      (root pages)
+     <link rel="stylesheet" href="../css/site-ui.css">   (pages/*.php)
+   ===================================================================== */
+
+:root {
+  --ui-ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --ui-fast: 0.2s;
+  --ui-focus: 0 0 0 3px rgba(107, 82, 68, 0.35);
+  --ui-lift: 0 6px 16px rgba(89, 66, 55, 0.18);
+  --ui-card-shadow: 0 10px 26px rgba(89, 66, 55, 0.12);
+}
+
+/* ---------- 1. Stop nav shifting between pages ----------
+   Pages that scroll have a scrollbar, short pages don't. That changes the
+   viewport width by ~15px and makes the centered/spaced nav "jump" when you
+   move between pages (e.g. Home -> Help). Reserve the gutter everywhere. */
+html {
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+}
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+body {
+  overflow-x: clip;
+}
+
+/* ---------- 2. Navigation bar: identical on every page ----------
+   Typography is pinned explicitly so a page stylesheet (Inter font on the
+   booking/help pages, letter-spacing, etc.) can never leak into the header. */
+.site-header,
+.site-header * {
+  box-sizing: border-box;
+}
+.site-header .navbar {
+  min-height: 68px; /* min only: header must grow with the logo */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.site-header .logo {
+  width: 100px;
+  height: auto;
+  display: block;
+}
+.site-header .nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.site-header .nav-links a,
+.site-header .mobile-nav a {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 500; /* never changes on hover/active -> no width shift */
+  letter-spacing: 0;
+  line-height: 1.5;
+  text-transform: none;
+  white-space: nowrap;
+}
+.site-header .nav-links a {
+  position: relative;
+  padding: 8px 2px;
+  color: var(--muted);
+  transition: color var(--ui-fast) var(--ui-ease);
+}
+.site-header .nav-links a:visited {
+  color: var(--muted);
+}
+/* underline indicator: absolutely positioned, so it never affects layout */
+.site-header .nav-links a::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--brown);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--ui-fast) var(--ui-ease);
+}
+.site-header .nav-links a:hover,
+.site-header .nav-links a:focus-visible,
+.site-header .nav-links a.active,
+.site-header .nav-links a[aria-current="page"] {
+  color: var(--brown);
+}
+.site-header .nav-links a:hover::after,
+.site-header .nav-links a:focus-visible::after,
+.site-header .nav-links a.active::after,
+.site-header .nav-links a[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+.site-header .nav-links a:active {
+  color: var(--brown-dark);
+}
+
+/* hamburger + mobile menu */
+.site-header .menu-btn {
+  display: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  line-height: 1;
+  transition: background var(--ui-fast) var(--ui-ease);
+}
+.site-header .menu-btn:hover {
+  background: var(--light);
+}
+.site-header .menu-btn:active {
+  background: var(--border);
+}
+
+.site-header .mobile-nav a {
+  padding: 12px;
+  color: var(--muted);
+  transition:
+    background var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease);
+}
+.site-header .mobile-nav a:hover {
+  background: var(--light);
+  color: var(--brown);
+}
+.site-header .mobile-nav a:active {
+  background: var(--border);
+}
+.site-header .mobile-nav a.active,
+.site-header .mobile-nav a[aria-current="page"] {
+  background: var(--brown);
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .site-header .nav-links {
+    display: none;
+  }
+  .site-header .menu-btn {
+    display: inline-flex;
+  }
+  .site-header .mobile-nav {
+    display: none;
+  }
+  .site-header .mobile-nav.show {
+    display: block;
+  }
+}
+@media (min-width: 901px) {
+  .site-header .mobile-nav,
+  .site-header .mobile-nav.show {
+    display: none;
+  }
+}
+
+/* ---------- 3. Buttons: one rule per VARIANT ----------
+   Primary  (Book Now)       brown fill  -> darker brown + lift
+   Outline  (View Services)  white fill  -> light tint + brown border
+   Danger                    pink fill   -> deeper pink
+   Same variant = same hover everywhere; variants stay different. */
+.btn,
+.bk-pay,
+.hp-submit {
+  transition:
+    background-color var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease),
+    border-color var(--ui-fast) var(--ui-ease),
+    box-shadow var(--ui-fast) var(--ui-ease),
+    transform var(--ui-fast) var(--ui-ease);
+}
+
+.btn-primary:hover,
+.bk-pay:not(.alt):hover:not(:disabled),
+.hp-submit:hover:not(:disabled) {
+  background: var(--brown-dark);
+  box-shadow: var(--ui-lift);
+  transform: translateY(-1px);
+}
+
+.btn-outline:hover,
+.bk-pay.alt:hover:not(:disabled) {
+  background: var(--light);
+  border-color: var(--brown);
+  color: var(--brown-dark);
+  box-shadow: 0 4px 12px rgba(89, 66, 55, 0.1);
+  transform: translateY(-1px);
+}
+
+.btn-danger:hover {
+  background: #fecaca;
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.15);
+  transform: translateY(-1px);
+}
+
+/* pressed (mouse + touch) */
+.btn:active,
+.bk-pay:not(:disabled):active,
+.hp-submit:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.btn-primary:active,
+.bk-pay:not(.alt):not(:disabled):active {
+  background: #4a362c;
+}
+.btn-outline:active,
+.bk-pay.alt:not(:disabled):active {
+  background: var(--border);
+}
+
+/* ---------- 4. Keyboard focus (visible on every interactive element) ---------- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--brown);
+  outline-offset: 2px;
+}
+.btn:focus-visible,
+.bk-pay:focus-visible,
+.hp-submit:focus-visible {
+  outline: 0;
+  box-shadow: var(--ui-focus);
+}
+
+/* ---------- 5. Cards & interactive components ---------- */
+.card,
+.hp-topic,
+.pkg-slide,
+.pkg-pick-card,
+.method,
+.addon-row {
+  transition:
+    box-shadow var(--ui-fast) var(--ui-ease),
+    border-color var(--ui-fast) var(--ui-ease),
+    background-color var(--ui-fast) var(--ui-ease),
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+.card:not(.form-card):hover {
+  border-color: #d9cbc0;
+  box-shadow: var(--ui-card-shadow);
+}
+.hp-topic:hover {
+  border-color: var(--brown);
+  box-shadow: var(--ui-card-shadow);
+  transform: translateY(-2px);
+}
+.hp-topic:active {
+  transform: translateY(0);
+}
+.hp-q-btn {
+  transition: background-color var(--ui-fast) var(--ui-ease);
+}
+.hp-q-btn:hover {
+  background: var(--light);
+}
+.hp-star {
+  transition:
+    transform var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast);
+}
+.hp-star:hover {
+  transform: scale(1.1);
+}
+
+/* carousel: keep the existing scale() on slides, only add feedback */
+.pkg-slide.is-side:hover {
+  opacity: 0.85;
+  filter: none;
+}
+.pkg-slide.is-center:hover {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+}
+.pkg-dot {
+  transition:
+    background-color var(--ui-fast),
+    width var(--ui-fast);
+}
+.pkg-dot:not(.is-active):hover {
+  background: #cdbcae;
+}
+.pkg-nav-btn:active {
+  transform: scale(0.95);
+}
+
+.bk-nav {
+  transition: background-color var(--ui-fast) var(--ui-ease);
+}
+.bk-day {
+  transition: background-color var(--ui-fast) var(--ui-ease);
+}
+
+/* ---------- 6. Text links (footer, inline) ---------- */
+.footer-links a,
+.footer a {
+  transition: color var(--ui-fast) var(--ui-ease);
+}
+.footer-links a:hover,
+.footer a:hover {
+  color: var(--brown);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- 7. Respect reduced-motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .btn:hover,
+  .bk-pay:hover,
+  .hp-submit:hover,
+  .hp-topic:hover {
+    transform: none !important;
+  }
+}
+
+/* touch devices: hover lift would "stick" after tapping */
+@media (hover: none) {
+  .btn:hover,
+  .bk-pay:hover,
+  .hp-submit:hover,
+  .hp-topic:hover {
+    transform: none;
   }
 }
