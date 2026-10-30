@@ -130,26 +130,41 @@ button {
 
 /* ---------- Mobile Navigation ---------- */
 
+
+/* ---------- Mobile Navigation ---------- */
+
 .mobile-nav {
-  display: none;
+    display: none;
+    flex-direction: column;
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    background: var(--white);
+}
 
-  border-top: 1px solid var(--border);
-
-  padding: 12px 16px;
+.mobile-nav.show {
+    display: flex;
 }
 
 .mobile-nav a {
-  display: block;
-
-  padding: 10px 12px;
-
-  border-radius: 8px;
+    display: block;
+    padding: 12px;
+    border-radius: 8px;
+    color: var(--muted);
+    text-decoration: none;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
-.mobile-nav a.active {
-  background: var(--brown);
-  color: white;
+.mobile-nav a:hover {
+    background: var(--light);
+    color: var(--brown);
 }
+
+.mobile-nav a.active,
+.mobile-nav a[aria-current="page"] {
+    background: var(--brown);
+    color: white;
+}
+
 
 /* =========================================
    SECTIONS
@@ -377,29 +392,53 @@ button {
    ADD-ONS
    ========================================= */
 
-.addon {
-  text-align: center;
+/* =========================================
+   ADD-ONS & EXTRAS
+   ========================================= */
 
-  background: var(--light);
+#cameraAddons .addon,
+#photoboothAddons .addon {
+  display: block;
+  position: relative;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #e8dfd8;
+  border-radius: 10px;
+  padding: 28px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease,
+              box-shadow 0.2s ease,
+              border-color 0.2s ease;
 }
 
-.addon-icon {
-  width: 48px;
-  height: 48px;
+#cameraAddons .addon h3,
+#photoboothAddons .addon h3 {
+  margin: 0 0 12px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #6b5244;
+}
 
-  margin: 0 auto 12px;
+#cameraAddons .addon .price,
+#photoboothAddons .addon .price {
+  color: #6b5244;
+  font-size: 30px;
+  font-weight: 600;
+  margin: 8px 0;
+}
 
-  border-radius: 50%;
+#cameraAddons .addon:hover,
+#photoboothAddons .addon:hover {
+  border-color: #6b5244;
+  box-shadow: 0 10px 26px rgba(89, 66, 55, 0.12);
+  transform: translateY(-4px);
+}
 
-  background: #e8ddd5;
-
-  display: grid;
-
-  place-items: center;
-
-  color: var(--brown);
-
-  font-size: 22px;
+@media (max-width: 600px) {
+  #cameraAddons .addon,
+  #photoboothAddons .addon {
+    padding: 20px;
+  }
 }
 
 /* =========================================
@@ -474,7 +513,7 @@ button {
   }
 
   .mobile-nav.show {
-    display: block;
+    display: flex;
   }
 
   .grid-3 {
