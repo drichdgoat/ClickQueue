@@ -49,9 +49,9 @@
     '<path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   var ICON_PHOTO =
-    '<svg class="pkg-media-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-    '<path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7L16.5 6H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>' +
-    '<circle cx="12" cy="12.5" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+  '<svg class="pkg-media-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+  '<path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7L16.5 6H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>' +
+  '<circle cx="12" cy="12.5" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
 
   /* ---------- price formatting (camera) ---------- */
   function cameraPriceHTML(cam) {
@@ -95,20 +95,21 @@
 
   /* ---------- card building blocks ---------- */
   function mediaHTML(url, alt) {
-    if (!url) {
-      return (
-        '<div class="pkg-media pkg-media--empty" aria-hidden="true">' +
-        ICON_PHOTO +
-        "</div>"
-      );
-    }
+  if (!url) {
     return (
-      '<div class="pkg-media"><img src="' +
-      esc(resolveImg(url)) +
-      '" alt="' +
-      esc(alt) +
-      '" loading="lazy" decoding="async"></div>'
+      '<div class="pkg-media pkg-media--empty" aria-hidden="true">' +
+      ICON_PHOTO +
+      "</div>"
     );
+  }
+
+  return (
+    '<div class="pkg-media"><img src="' +
+    esc(resolveImg(url)) +
+    '" alt="' +
+    esc(alt) +
+    '" loading="lazy" decoding="async"></div>'
+  );
   }
 
   function headHTML(name, subtitle) {
@@ -422,17 +423,18 @@
 
     /* if a photo fails to load, fall back to the plain placeholder */
     stage.addEventListener(
-      "error",
-      function (e) {
-        var t = e.target;
-        if (t && t.tagName === "IMG" && t.parentNode) {
-          var holder = t.parentNode;
-          holder.classList.add("pkg-media--empty");
-          holder.removeChild(t);
-          holder.insertAdjacentHTML("afterbegin", ICON_PHOTO);
-        }
-      },
-      true,
+    "error",
+    function (e) {
+      var t = e.target;
+
+      if (t && t.tagName === "IMG" && t.parentNode) {
+        var holder = t.parentNode;
+        holder.classList.add("pkg-media--empty");
+        holder.removeChild(t);
+        holder.insertAdjacentHTML("afterbegin", ICON_PHOTO);
+      }
+    },
+    true
     );
 
     update();
@@ -447,20 +449,34 @@
     }, 1200);
   }
 
-  /* ---------- accessory / add-on mini cards ---------- */
+    /* ---------- accessory / add-on cards ---------- */
   function renderMiniCards(root, items, unitSuffix) {
-    root.innerHTML = items
-      .map(function (item) {
-        return (
-          '<div class="card addon-mini"><h3>' +
+  root.innerHTML = items
+    .map(function (item) {
+          var image = item.image_url
+      ?   '<div class="addon-media"><img src="' +
+          esc(resolveImg(item.image_url)) +
+          '" alt="' +
           esc(item.name) +
-          '</h3><div class="price">' +
-          peso(item.price) +
-          (unitSuffix ? " <small>" + unitSuffix + "</small>" : "") +
-          "</div></div>"
-        );
-      })
-      .join("");
+          '" loading="lazy"></div>'
+          : '<div class="addon-media addon-media--empty">' +
+          ICON_PHOTO +
+          "</div>";
+
+      return (
+        '<div class="addon-card">' +
+        image +
+        '<div class="addon-head"><h3>' +
+        esc(item.name) +
+        "</h3></div>" +
+        '<div class="addon-pricebox"><div class="addon-price">' +
+        peso(item.price) +
+        (unitSuffix ? " <small>" + unitSuffix + "</small>" : "") +
+        "</div></div>" +
+        "</div>"
+      );
+    })
+    .join("");
   }
 
   /* ---------- boot ---------- */
