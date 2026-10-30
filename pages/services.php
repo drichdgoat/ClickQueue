@@ -119,7 +119,7 @@
       </div>
     </footer>
 
-    <script src="../js/nav.js"></script>
+    <script src="js/nav.js"></script>
     <script src="../js/services-carousel.js"></script>
   </body>
 </html>
